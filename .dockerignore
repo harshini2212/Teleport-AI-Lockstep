@@ -1,0 +1,14 @@
+# Keep the Docker build context small and secret-free.
+.git
+.env
+*.env.local
+*.exe
+go/server
+go/lifecycleguard
+# Not needed to build ./cmd/server (separate Temporal module + non-Go assets):
+go/temporal
+lean
+dbt
+k8s
+macos
+terraform

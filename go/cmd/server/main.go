@@ -33,7 +33,7 @@ import (
 )
 
 func main() {
-	addr := flag.String("addr", ":8080", "listen address")
+	addr := flag.String("addr", "", "listen address (default: $PORT if set, else :8080)")
 	dashboard := flag.String("dashboard", "../dashboard", "path to the dashboard directory")
 	envFile := flag.String("env", "", "path to a .env file (default: try .env then ../.env)")
 	flag.Parse()
@@ -71,8 +71,21 @@ func main() {
 	mux.HandleFunc("/api/incident", srv.incident)
 	mux.Handle("/", http.FileServer(http.Dir(*dashboard)))
 
-	log.Printf("Lifecycle Guard backend listening on http://localhost%s  (dashboard: %s)", *addr, *dashboard)
-	log.Fatal(http.ListenAndServe(*addr, withLog(mux)))
+	// Resolve the listen address: an explicit -addr always wins; otherwise honor
+	// $PORT (Railway and most PaaS inject a dynamic port here) and fall back to
+	// :8080 for local runs. Binding ":port" listens on all interfaces (0.0.0.0),
+	// which the platform health-check requires.
+	listen := *addr
+	if listen == "" {
+		if p := os.Getenv("PORT"); p != "" {
+			listen = ":" + p
+		} else {
+			listen = ":8080"
+		}
+	}
+
+	log.Printf("Lifecycle Guard backend listening on http://localhost%s  (dashboard: %s)", listen, *dashboard)
+	log.Fatal(http.ListenAndServe(listen, withLog(mux)))
 }
 
 // loadDotEnv reads the first readable path and sets any KEY=VALUE lines into the
