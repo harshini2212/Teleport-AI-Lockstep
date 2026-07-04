@@ -1,0 +1,500 @@
+{
+  "generated_at": "2026-07-02T12:00:00Z",
+  "policy": {
+    "department_roles": {
+      "Engineering": [
+        "dev-access",
+        "k8s-staging"
+      ],
+      "Finance": [
+        "finance-app",
+        "db-readonly"
+      ],
+      "IT": [
+        "it-admin",
+        "device-admin"
+      ],
+      "SRE": [
+        "dev-access",
+        "k8s-prod",
+        "db-readonly"
+      ],
+      "Sales": [
+        "crm-access"
+      ],
+      "Security": [
+        "auditor",
+        "db-readonly"
+      ]
+    },
+    "max_session_ttl": "8h0m0s"
+  },
+  "steps": [
+    {
+      "event": {
+        "type": "joiner",
+        "source": "rippling",
+        "employee": {
+          "id": "E-101",
+          "email": "alice@goteleport.com",
+          "name": "Alice Ng",
+          "department": "Engineering",
+          "title": "Engineer",
+          "status": "active"
+        },
+        "timestamp": "2026-07-02T09:00:00Z"
+      },
+      "actions": [
+        {
+          "kind": "provision",
+          "user": "alice@goteleport.com",
+          "roles": [
+            "dev-access",
+            "k8s-staging"
+          ],
+          "reason": "joiner in Engineering/Engineer",
+          "source": "rippling",
+          "occurred_at": "2026-07-02T09:00:00Z"
+        }
+      ]
+    },
+    {
+      "event": {
+        "type": "joiner",
+        "source": "rippling",
+        "employee": {
+          "id": "E-102",
+          "email": "bob@goteleport.com",
+          "name": "Bob Reyes",
+          "department": "SRE",
+          "title": "Incident Commander",
+          "status": "active"
+        },
+        "timestamp": "2026-07-02T09:01:00Z"
+      },
+      "actions": [
+        {
+          "kind": "provision",
+          "user": "bob@goteleport.com",
+          "roles": [
+            "break-glass-eligible",
+            "db-readonly",
+            "dev-access",
+            "k8s-prod"
+          ],
+          "reason": "joiner in SRE/Incident Commander",
+          "source": "rippling",
+          "occurred_at": "2026-07-02T09:01:00Z"
+        }
+      ]
+    },
+    {
+      "event": {
+        "type": "joiner",
+        "source": "okta",
+        "employee": {
+          "id": "E-103",
+          "email": "carol@goteleport.com",
+          "name": "Carol Diaz",
+          "department": "IT",
+          "title": "Manager",
+          "status": "active"
+        },
+        "timestamp": "2026-07-02T09:02:00Z"
+      },
+      "actions": [
+        {
+          "kind": "provision",
+          "user": "carol@goteleport.com",
+          "roles": [
+            "access-reviewer",
+            "device-admin",
+            "it-admin"
+          ],
+          "reason": "joiner in IT/Manager",
+          "source": "okta",
+          "occurred_at": "2026-07-02T09:02:00Z"
+        }
+      ]
+    },
+    {
+      "event": {
+        "type": "mover",
+        "source": "rippling",
+        "employee": {
+          "id": "E-101",
+          "email": "alice@goteleport.com",
+          "name": "Alice Ng",
+          "department": "SRE",
+          "title": "Engineer",
+          "status": "active"
+        },
+        "prior_department": "Engineering",
+        "timestamp": "2026-07-02T09:30:00Z"
+      },
+      "actions": [
+        {
+          "kind": "update_roles",
+          "user": "alice@goteleport.com",
+          "roles": [
+            "db-readonly",
+            "dev-access",
+            "k8s-prod"
+          ],
+          "reason": "moved Engineering -\u003e SRE",
+          "source": "rippling",
+          "occurred_at": "2026-07-02T09:30:00Z"
+        }
+      ]
+    },
+    {
+      "event": {
+        "type": "leaver",
+        "source": "rippling",
+        "employee": {
+          "id": "E-103",
+          "email": "carol@goteleport.com",
+          "name": "Carol Diaz",
+          "department": "IT",
+          "title": "Manager",
+          "status": "terminated"
+        },
+        "timestamp": "2026-07-02T11:00:00Z"
+      },
+      "actions": [
+        {
+          "kind": "lock",
+          "user": "carol@goteleport.com",
+          "reason": "offboarding: lock issued to sever live sessions",
+          "source": "rippling",
+          "occurred_at": "2026-07-02T11:00:00Z"
+        },
+        {
+          "kind": "deprovision",
+          "user": "carol@goteleport.com",
+          "reason": "offboarding: user and role bindings removed",
+          "source": "rippling",
+          "occurred_at": "2026-07-02T11:00:00Z"
+        }
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "event": {
+        "type": "joiner",
+        "source": "deploy",
+        "subject": {
+          "kind": "agent",
+          "id": "A-kyra",
+          "name": "kyra",
+          "status": "active",
+          "scope": [
+            "kyra-memory"
+          ],
+          "spiffe_id": "spiffe://teleport.goteleport.com/agents/kyra"
+        },
+        "timestamp": "2026-07-02T10:00:00Z"
+      },
+      "actions": [
+        {
+          "kind": "issue_identity",
+          "user": "spiffe://teleport.goteleport.com/agents/kyra",
+          "roles": [
+            "db-readonly"
+          ],
+          "reason": "agent join: SPIFFE identity issued, scoped to [db-readonly]",
+          "source": "deploy",
+          "occurred_at": "2026-07-02T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "event": {
+        "type": "mover",
+        "source": "deploy",
+        "subject": {
+          "kind": "agent",
+          "id": "A-kyra",
+          "name": "kyra",
+          "status": "active",
+          "scope": [
+            "kyra-memory",
+            "kyra-calendar"
+          ],
+          "spiffe_id": "spiffe://teleport.goteleport.com/agents/kyra"
+        },
+        "prior_scope": [
+          "kyra-memory"
+        ],
+        "timestamp": "2026-07-02T10:30:00Z"
+      },
+      "actions": [
+        {
+          "kind": "rescope_identity",
+          "user": "spiffe://teleport.goteleport.com/agents/kyra",
+          "roles": [
+            "crm-access",
+            "db-readonly"
+          ],
+          "reason": "agent move: re-scoped [kyra-memory] -\u003e [kyra-memory kyra-calendar], no new secret",
+          "source": "deploy",
+          "occurred_at": "2026-07-02T10:30:00Z"
+        }
+      ]
+    },
+    {
+      "event": {
+        "type": "leaver",
+        "source": "deploy",
+        "subject": {
+          "kind": "agent",
+          "id": "A-kyra",
+          "name": "kyra",
+          "status": "terminated",
+          "spiffe_id": "spiffe://teleport.goteleport.com/agents/kyra"
+        },
+        "timestamp": "2026-07-02T11:30:00Z"
+      },
+      "actions": [
+        {
+          "kind": "lock",
+          "user": "spiffe://teleport.goteleport.com/agents/kyra",
+          "reason": "agent decommission: bot locked to sever in-flight SVIDs",
+          "source": "deploy",
+          "occurred_at": "2026-07-02T11:30:00Z"
+        },
+        {
+          "kind": "revoke_identity",
+          "user": "spiffe://teleport.goteleport.com/agents/kyra",
+          "reason": "agent decommission: workload identity deleted, bot removed",
+          "source": "deploy",
+          "occurred_at": "2026-07-02T11:30:00Z"
+        }
+      ]
+    }
+  ],
+  "jit_decisions": [
+    {
+      "user": "bob@goteleport.com",
+      "requested": "db-readonly",
+      "auto_approve": true,
+      "reason": "within auto-approvable escalation path"
+    },
+    {
+      "user": "alice@goteleport.com",
+      "requested": "it-admin",
+      "auto_approve": false,
+      "reason": "outside policy: routed to human approver"
+    }
+  ],
+  "findings": [
+    {
+      "detector": "offboarded-active-session",
+      "severity": "critical",
+      "user": "dave@goteleport.com",
+      "summary": "terminated identity dave@goteleport.com holds a live k8s session (sess-7f3a) from 203.0.113.51",
+      "remediation": "issue tctl lock immediately; investigate session recording"
+    },
+    {
+      "detector": "offboarded-identity-survives",
+      "severity": "critical",
+      "user": "dave@goteleport.com",
+      "summary": "terminated identity dave@goteleport.com still has a provisioned Teleport user",
+      "remediation": "deprovision and lock; re-run lifecycle reconcile"
+    },
+    {
+      "detector": "unmanaged-device",
+      "severity": "critical",
+      "user": "frank@goteleport.com",
+      "summary": "frank@goteleport.com active from a device not enrolled in Jamf/Teleport inventory (198.51.100.77)",
+      "remediation": "enforce device_trust_mode: required; deny access from unmanaged devices"
+    },
+    {
+      "detector": "noncompliant-device",
+      "severity": "high",
+      "user": "erin@goteleport.com",
+      "summary": "erin@goteleport.com active from a managed but non-compliant Mac (failed hardening baseline)",
+      "remediation": "block until compliant; run the Jamf 'Harden' policy (macos/harden.sh)"
+    },
+    {
+      "detector": "privilege-escalation",
+      "severity": "high",
+      "user": "alice@goteleport.com",
+      "summary": "alice@goteleport.com holds role \"it-admin\" not granted by policy",
+      "remediation": "revert to policy-derived roles; audit who granted it"
+    },
+    {
+      "detector": "privilege-escalation",
+      "severity": "high",
+      "user": "dave@goteleport.com",
+      "summary": "dave@goteleport.com holds role \"k8s-prod\" not granted by policy",
+      "remediation": "revert to policy-derived roles; audit who granted it"
+    },
+    {
+      "detector": "new-geo-access",
+      "severity": "medium",
+      "user": "dave@goteleport.com",
+      "summary": "dave@goteleport.com active from unseen source IP 203.0.113.51",
+      "remediation": "trigger device-trust step-up; confirm with user"
+    }
+  ],
+  "devices": [
+    {
+      "serial_number": "C02ALICE",
+      "user_email": "alice@goteleport.com",
+      "managed": true,
+      "supervised": true,
+      "compliance": {
+        "filevault": true,
+        "firewall": true,
+        "gatekeeper": true,
+        "sip": true,
+        "screen_lock": true,
+        "auto_updates": true,
+        "guest_disabled": true,
+        "overall": true
+      },
+      "last_inventory_update": "2026-07-02T11:00:00Z"
+    },
+    {
+      "serial_number": "C02BOB",
+      "user_email": "bob@goteleport.com",
+      "managed": true,
+      "supervised": true,
+      "compliance": {
+        "filevault": true,
+        "firewall": true,
+        "gatekeeper": true,
+        "sip": true,
+        "screen_lock": true,
+        "auto_updates": true,
+        "guest_disabled": true,
+        "overall": true
+      },
+      "last_inventory_update": "2026-07-02T11:00:00Z"
+    },
+    {
+      "serial_number": "C02DAVE",
+      "user_email": "dave@goteleport.com",
+      "managed": true,
+      "supervised": true,
+      "compliance": {
+        "filevault": true,
+        "firewall": true,
+        "gatekeeper": true,
+        "sip": true,
+        "screen_lock": true,
+        "auto_updates": true,
+        "guest_disabled": true,
+        "overall": true
+      },
+      "last_inventory_update": "2026-07-02T11:00:00Z"
+    },
+    {
+      "serial_number": "C02ERIN",
+      "user_email": "erin@goteleport.com",
+      "managed": true,
+      "supervised": true,
+      "compliance": {
+        "filevault": false,
+        "firewall": false,
+        "gatekeeper": true,
+        "sip": true,
+        "screen_lock": true,
+        "auto_updates": true,
+        "guest_disabled": true,
+        "overall": false
+      },
+      "last_inventory_update": "2026-07-02T11:00:00Z"
+    },
+    {
+      "serial_number": "BYOD-FRANK",
+      "user_email": "frank@goteleport.com",
+      "managed": false,
+      "supervised": false,
+      "compliance": {
+        "filevault": false,
+        "firewall": false,
+        "gatekeeper": true,
+        "sip": true,
+        "screen_lock": true,
+        "auto_updates": true,
+        "guest_disabled": true,
+        "overall": false
+      },
+      "last_inventory_update": "2026-07-02T11:00:00Z"
+    }
+  ],
+  "final_state": {
+    "users": [
+      {
+        "name": "alice@goteleport.com",
+        "roles": [
+          "db-readonly",
+          "dev-access",
+          "it-admin",
+          "k8s-prod"
+        ]
+      },
+      {
+        "name": "bob@goteleport.com",
+        "roles": [
+          "break-glass-eligible",
+          "db-readonly",
+          "dev-access",
+          "k8s-prod"
+        ],
+        "traits": {
+          "logins": [
+            "bob"
+          ]
+        }
+      },
+      {
+        "name": "dave@goteleport.com",
+        "roles": [
+          "k8s-prod"
+        ]
+      }
+    ],
+    "locks": [
+      {
+        "target": "bot-kyra",
+        "reason": "decommission: agent terminated",
+        "expires": "0001-01-01T00:00:00Z"
+      },
+      {
+        "target": "carol@goteleport.com",
+        "reason": "offboarding: terminated in HRIS",
+        "expires": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "sessions": [
+      {
+        "id": "sess-3e88",
+        "user": "frank@goteleport.com",
+        "kind": "db",
+        "login": "frank",
+        "source_ip": "198.51.100.77",
+        "started": "2026-07-02T11:55:00Z"
+      },
+      {
+        "id": "sess-7f3a",
+        "user": "dave@goteleport.com",
+        "kind": "k8s",
+        "login": "dave",
+        "source_ip": "203.0.113.51",
+        "started": "2026-07-02T11:40:00Z"
+      },
+      {
+        "id": "sess-9c21",
+        "user": "erin@goteleport.com",
+        "kind": "ssh",
+        "login": "erin",
+        "source_ip": "198.51.100.31",
+        "started": "2026-07-02T11:50:00Z"
+      }
+    ]
+  }
+}

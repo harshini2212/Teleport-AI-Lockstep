@@ -1,0 +1,58 @@
+# dbt project for access-review analytics over Teleport audit events.
+#
+# Pipeline: Teleport Event Handler -> Fluentd -> S3 -> Fivetran -> Redshift -> dbt.
+# This project is the warehouse half of Lifecycle Guard: the Go engine reacts to
+# events in real time and the Lean proof certifies the offboarding invariant; this
+# project re-derives the same invariants over the *landed audit record* in Redshift
+# so an auditor (SOC 2 / NIST 800-53) can recompute them from cold storage.
+#
+# The headline model is marts/access_review/mart_offboarding_exceptions.sql — the
+# warehouse equivalent of the Lean theorem and the Go `offboarded-active-session`
+# detector. A schema test asserts it returns ZERO rows.
+
+name: "lifecycle_guard_warehouse"
+version: "1.0.0"
+config-version: 2
+
+# Maps to a target in profiles.yml (see profiles.example.yml).
+profile: "redshift"
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Project-wide variables. Override at runtime with `dbt run --vars '{dormant_days: 30}'`.
+vars:
+  # An identity with access but no session in this many days is a recertification
+  # candidate (NIST AC-2 account management / periodic review).
+  dormant_days: 90
+  # The recurring access-review window (NIST AC-2(j), SOC 2 CC6.2/CC6.3). Mirrors
+  # the quarterly prod-access review list provisioned in terraform/sso_and_access_requests.tf.
+  review_period_days: 90
+
+models:
+  lifecycle_guard_warehouse:
+    # Staging models are thin, 1:1 views over the Fivetran-landed raw tables —
+    # cheap to rebuild, never the cause of a Redshift table bloat.
+    staging:
+      +materialized: view
+      +schema: staging
+    # Marts are the analyst-/auditor-facing tables. Materialized so reviews read a
+    # stable snapshot and BI tools don't re-run the unnesting on every query.
+    marts:
+      +materialized: table
+      +schema: marts
+
+seeds:
+  lifecycle_guard_warehouse:
+    +schema: seeds
+
+# Surface source-freshness failures loudly: if Fivetran stops landing audit events
+# the whole access-review picture goes stale, which is itself a control gap.

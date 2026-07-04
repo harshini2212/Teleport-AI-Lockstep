@@ -1,0 +1,5 @@
+name = "lifecycleguard"
+defaultTargets = ["LifecycleGuard"]
+
+[[lean_lib]]
+name = "LifecycleGuard"

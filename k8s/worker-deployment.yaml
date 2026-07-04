@@ -1,0 +1,160 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Lifecycle Guard — Temporal worker on Kubernetes
+#
+# This is the production shape of the JD's "Temporal and Go running on
+# Kubernetes": the lifecycle automation (Joiner/Mover/Leaver reconcile, JIT
+# decisions, audit-stream remediation) runs as Temporal workflows/activities so
+# that every step is durable, retried, and replayable — exactly the guarantees
+# you want for "provably revoke access on termination."
+#
+# Architecture:
+#   - The Temporal *server* (frontend, history, matching, worker services + its
+#     persistence) is deployed separately via the official Helm chart:
+#         helm repo add temporalio https://go.temporal.io/helm-charts
+#         helm install temporal temporalio/temporal -n temporal --create-namespace
+#     That brings up the temporal-frontend Service on :7233 inside the cluster.
+#   - This Deployment runs only the *worker* — a Go binary built from
+#     go/cmd/worker that connects out to temporal-frontend:7233, registers the
+#     lifecycle Task Queue, and executes workflows/activities. It hosts no
+#     inbound traffic of its own.
+#
+# Durability note: all workflow state, history, and retry bookkeeping live in the
+# Temporal server's datastore — NOT in the worker. The worker is therefore fully
+# stateless: no PVC, no local state, safe to scale horizontally or reschedule.
+# ─────────────────────────────────────────────────────────────────────────────
+---
+# Optional namespace. Drop this doc if you deploy into an existing namespace;
+# just keep namespace: lifecycle-guard consistent across the manifests below.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lifecycle-guard
+  labels:
+    app.kubernetes.io/part-of: lifecycle-guard
+---
+# Optional Secret holding the Anthropic API key consumed by the NarrateChange
+# activity (the plain-English access-change narration). The worker degrades
+# gracefully if it is absent, so this is not required for the core JML loop.
+#
+# Do NOT commit a real key. Create it out-of-band, e.g.:
+#   kubectl -n lifecycle-guard create secret generic lifecycle-guard-secrets \
+#     --from-literal=anthropic-api-key=sk-ant-...
+# This stub exists only to document the expected shape and is safe to delete.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lifecycle-guard-secrets
+  namespace: lifecycle-guard
+type: Opaque
+stringData:
+  anthropic-api-key: "" # replace via `kubectl create secret`, never in git
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lifecycle-guard-worker
+  namespace: lifecycle-guard
+  labels:
+    app.kubernetes.io/name: lifecycle-guard-worker
+    app.kubernetes.io/part-of: lifecycle-guard
+    app.kubernetes.io/component: temporal-worker
+spec:
+  # Two replicas: Temporal load-balances tasks across all pollers on the task
+  # queue, so this gives both throughput headroom and availability during a
+  # rolling update or node drain. Workers are interchangeable and stateless.
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lifecycle-guard-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lifecycle-guard-worker
+        app.kubernetes.io/part-of: lifecycle-guard
+        app.kubernetes.io/component: temporal-worker
+    spec:
+      # Pod-level hardening. The worker needs no elevated privileges; it only
+      # makes outbound gRPC to Temporal (and HTTPS to the Teleport API / Anthropic).
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532  # nonroot uid in distroless/static base images
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          # Built from go/cmd/worker. Pin to an immutable digest in real
+          # deployments; :latest is used here only to keep the manifest readable.
+          image: lifecycle-guard-worker:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            # Temporal frontend Service installed by the Helm chart (namespace
+            # `temporal`). The worker dials this on startup to register pollers.
+            - name: TEMPORAL_ADDRESS
+              value: "temporal-frontend.temporal.svc.cluster.local:7233"
+            - name: TEMPORAL_NAMESPACE
+              value: "default"
+            # Optional — only the NarrateChange activity reads this. Sourced from
+            # the Secret above; optional:true so the pod still starts without it.
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: lifecycle-guard-secrets
+                  key: anthropic-api-key
+                  optional: true
+          resources:
+            # Modest: this worker is I/O-bound (gRPC to Template/Teleport), not
+            # compute-heavy. Tune against observed task-queue latency.
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          # ── Health probes ──────────────────────────────────────────────────
+          # IMPORTANT: a Temporal worker exposes NO HTTP server by default — it
+          # is a gRPC *client* that long-polls the frontend. A plain httpGet
+          # probe would therefore always fail (nothing is listening). We instead
+          # check liveness/readiness another way. Two valid options for a
+          # port-less worker (kubelet probes can only target the pod's OWN ports,
+          # so a tcpSocket probe only works if the worker itself opens a port):
+          #
+          #   (a) tcpSocket — have go/cmd/worker bind a tiny TCP/health listener
+          #       (e.g. on :6060) once Worker.Start() succeeds, then probe that
+          #       local port. Simple, but only proves the process is up.
+          #   (b) exec — run a small in-container check that returns non-zero
+          #       until the worker has actually connected to and registered with
+          #       the Temporal frontend. Proves real readiness, not just liveness.
+          #
+          # We use (b): a `healthcheck` subcommand on the same binary that calls
+          # the Temporal SDK's health check against TEMPORAL_ADDRESS. If you later
+          # expose an HTTP /healthz from the worker, swap these for httpGet.
+          readinessProbe:
+            exec:
+              command:
+                - /bin/worker
+                - healthcheck   # subcommand: exits 0 once connected to Temporal
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/worker
+                - healthcheck
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            # readOnlyRootFilesystem:true means the container can't write to /.
+            # Give it a writable scratch tmpfs for anything that needs /tmp.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

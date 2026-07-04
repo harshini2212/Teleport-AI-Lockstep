@@ -1,0 +1,22 @@
+# Secrets
+.env
+*.env.local
+
+# Go
+go/lifecycleguard
+go/server
+go/server.exe
+*.exe
+*.test
+*.out
+
+# Lean
+lean/.lake/
+lean/build/
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform-identity
+.terraform.lock.hcl

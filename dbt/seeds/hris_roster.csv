@@ -1,0 +1,6 @@
+teleport_user,full_name,department,title,employment_status,hired_at,terminated_at
+alice@goteleport.com,Alice Ng,Engineering,Senior Engineer,active,2023-02-06,
+bob@goteleport.com,Bob Reyes,SRE,Site Reliability Engineer,active,2022-09-12,
+carol@goteleport.com,Carol Dasgupta,Finance,Finance Manager,terminated,2021-05-03,2026-06-20
+dave@goteleport.com,Dave Olsson,Sales,Account Executive,terminated,2024-01-15,2026-06-25
+kyra@goteleport.com,Kyra (AI agent),Automation,Workload Identity,active,2025-11-01,

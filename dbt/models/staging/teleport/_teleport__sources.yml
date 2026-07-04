@@ -1,0 +1,62 @@
+version: 2
+
+# Raw Teleport audit events as landed by Fivetran.
+#
+# How the data gets here:
+#   Teleport Event Handler -> Fluentd (s3 output plugin) -> S3 bucket of NDJSON
+#   -> Fivetran S3 connector -> Redshift schema `raw_teleport`.
+#
+# Each row is one Teleport audit event. Fivetran lands the event JSON in a single
+# Redshift SUPER column (`_data`) rather than pre-flattening it, because Teleport's
+# audit schema is a tagged union: the fields present depend on `event` (a login has
+# `user`/`method`, a session.start has `session_id`/`server_id`, an
+# access_request.create has `roles`/`reviewers`, etc.). We unnest the fields we need
+# in stg_teleport_events with Redshift SUPER dot/bracket notation.
+#
+# Field-name caveat: Teleport's audit event field names are taken from the documented
+# events schema (the `events.proto` / Audit Events reference). Where a name is
+# version-dependent it is commented at the point of use in stg_teleport_events.sql.
+
+sources:
+  - name: raw_teleport
+    description: >
+      Fivetran-managed raw landing schema for the Teleport audit event stream.
+      Owned by the Fivetran S3 connector; dbt only reads from it.
+    database: "{{ env_var('REDSHIFT_DATABASE', 'analytics') }}"
+    schema: raw_teleport
+
+    # Fivetran writes its own bookkeeping columns on every table. We use
+    # _fivetran_synced as the freshness watermark and _fivetran_deleted to honor
+    # soft-deletes (Fivetran tombstones rows rather than hard-deleting).
+    loaded_at_field: _fivetran_synced
+    freshness:
+      # Audit events should land continuously; a multi-hour gap is itself a finding
+      # (the upstream Event Handler or Fluentd forwarder may be down).
+      warn_after: { count: 6, period: hour }
+      error_after: { count: 24, period: hour }
+
+    tables:
+      - name: audit_events
+        description: >
+          One row per Teleport audit event. The event body lives in the SUPER
+          column `_data`; the remaining columns are Fivetran system metadata.
+        columns:
+          - name: _data
+            description: >
+              The full Teleport audit event as a Redshift SUPER value (parsed JSON).
+              Common keys: `uid`, `event`, `code`, `time`, `user`, `login`,
+              `addr.remote` (source IP), and event-type-specific fields.
+            tests:
+              - not_null
+          - name: _fivetran_synced
+            description: UTC timestamp Fivetran last synced this row. Freshness watermark.
+          - name: _fivetran_deleted
+            description: >
+              Soft-delete tombstone. Fivetran sets this true instead of physically
+              deleting; staging filters it out so deletes propagate.
+          - name: _file
+            description: Source S3 object key this event was read from (Fivetran S3 metadata).
+          - name: _line
+            description: Line number within the NDJSON `_file` (Fivetran S3 metadata).
+          - name: _modified
+            description: Last-modified timestamp of the source S3 object (Fivetran S3 metadata).

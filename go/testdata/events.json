@@ -1,0 +1,55 @@
+[
+  {
+    "type": "joiner",
+    "source": "rippling",
+    "timestamp": "2026-06-29T09:00:00Z",
+    "employee": {
+      "id": "E-101",
+      "email": "alice@goteleport.com",
+      "name": "Alice Ng",
+      "department": "Engineering",
+      "title": "Engineer",
+      "status": "active"
+    }
+  },
+  {
+    "type": "joiner",
+    "source": "rippling",
+    "timestamp": "2026-06-29T09:01:00Z",
+    "employee": {
+      "id": "E-102",
+      "email": "bob@goteleport.com",
+      "name": "Bob Reyes",
+      "department": "SRE",
+      "title": "Incident Commander",
+      "status": "active"
+    }
+  },
+  {
+    "type": "mover",
+    "source": "rippling",
+    "timestamp": "2026-06-29T09:30:00Z",
+    "prior_department": "Engineering",
+    "employee": {
+      "id": "E-101",
+      "email": "alice@goteleport.com",
+      "name": "Alice Ng",
+      "department": "SRE",
+      "title": "Engineer",
+      "status": "active"
+    }
+  },
+  {
+    "type": "leaver",
+    "source": "rippling",
+    "timestamp": "2026-06-29T11:00:00Z",
+    "employee": {
+      "id": "E-102",
+      "email": "bob@goteleport.com",
+      "name": "Bob Reyes",
+      "department": "SRE",
+      "title": "Incident Commander",
+      "status": "terminated"
+    }
+  }
+]

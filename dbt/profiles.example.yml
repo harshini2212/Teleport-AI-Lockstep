@@ -1,0 +1,45 @@
+# Example dbt profile for the lifecycle_guard_warehouse project.
+#
+# Copy to ~/.dbt/profiles.yml (or set DBT_PROFILES_DIR) and fill the env vars.
+# Nothing secret is committed: host/credentials come from the environment so this
+# file is safe to keep in the repo, matching the "no static admin token" posture of
+# the Terraform (provider.tf uses a tbot identity file, not a baked-in secret).
+#
+# Auth note: this uses a database user/password for clarity. In production prefer
+# Redshift IAM auth (`method: iam`) or a short-lived credential from your secrets
+# manager so the warehouse connection is as ephemeral as the Teleport certs it
+# analyzes.
+
+redshift:
+  target: dev
+  outputs:
+    dev:
+      type: redshift
+      # Provisioned-cluster endpoint, or the Redshift Serverless workgroup endpoint.
+      host: "{{ env_var('REDSHIFT_HOST') }}"
+      port: "{{ env_var('REDSHIFT_PORT', '5439') | int }}"
+      user: "{{ env_var('REDSHIFT_USER') }}"
+      password: "{{ env_var('REDSHIFT_PASSWORD') }}"
+      dbname: "{{ env_var('REDSHIFT_DATABASE', 'analytics') }}"
+      # dbt builds objects under this schema; staging/marts get a +schema suffix.
+      schema: analytics
+      threads: 4
+      # Keep the connection itself ephemeral.
+      connect_timeout: 30
+      sslmode: require
+
+    prod:
+      type: redshift
+      host: "{{ env_var('REDSHIFT_HOST') }}"
+      port: "{{ env_var('REDSHIFT_PORT', '5439') | int }}"
+      # IAM auth example for prod — no long-lived password in the warehouse path.
+      # method: iam
+      # cluster_id: "{{ env_var('REDSHIFT_CLUSTER_ID') }}"
+      # iam_profile: "{{ env_var('AWS_PROFILE') }}"
+      user: "{{ env_var('REDSHIFT_USER') }}"
+      password: "{{ env_var('REDSHIFT_PASSWORD') }}"
+      dbname: "{{ env_var('REDSHIFT_DATABASE', 'analytics') }}"
+      schema: analytics
+      threads: 8
+      connect_timeout: 30
+      sslmode: require

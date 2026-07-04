@@ -1,0 +1,31 @@
+version: 2
+
+seeds:
+  - name: hris_roster
+    description: >
+      Demo HRIS roster — the Rippling/Okta "who is employed" source of truth, the
+      same identities the Go engine and Lean proof use. Mirrors the demo state:
+      alice (Engineering) and bob (SRE) active, carol (Finance) and dave (Sales)
+      terminated, and kyra the AI agent (a Teleport workload_identity / bot, not a
+      human) carried as an active non-person identity.
+      In production this table is itself Fivetran-synced from Rippling; here it is a
+      seed so the project runs offline like the rest of Lifecycle Guard.
+    config:
+      # Type the columns explicitly so Redshift doesn't guess dates as varchar.
+      column_types:
+        teleport_user: varchar(256)
+        full_name: varchar(256)
+        department: varchar(64)
+        title: varchar(128)
+        employment_status: varchar(32)
+        hired_at: date
+        terminated_at: date
+    columns:
+      - name: teleport_user
+        tests:
+          - unique
+          - not_null
+      - name: employment_status
+        tests:
+          - accepted_values:
+              values: ["active", "terminated"]

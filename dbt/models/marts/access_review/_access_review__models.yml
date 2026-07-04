@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: dim_identity
+    description: One row per identity (human or agent), HRIS truth joined to audit-observed activity.
+    columns:
+      - name: teleport_user
+        description: Natural key — the Teleport username / goteleport.com email.
+        tests:
+          - unique
+          - not_null
+      - name: employment_status
+        description: active | terminated | unknown (unknown = seen in audit, absent from HRIS).
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["active", "terminated", "unknown"]
+      - name: is_offboarded
+        description: True iff employment_status = 'terminated'. The offboarding mart keys on this.
+        tests:
+          - not_null
+
+  - name: fct_access_events
+    description: Access-relevant Teleport audit events, FK to dim_identity.
+    columns:
+      - name: event_uid
+        description: Grain — Teleport's unique event uid.
+        tests:
+          - unique
+          - not_null
+      - name: event_time
+        tests:
+          - not_null
+      - name: teleport_user
+        description: FK to dim_identity. Referential integrity enforced below.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_identity')
+              field: teleport_user
+      - name: event_type
+        tests:
+          - not_null
+
+  - name: mart_standing_prod_access
+    description: AC-6 least-privilege — privileged-role use with no JIT request behind it.
+    columns:
+      - name: teleport_user
+        tests:
+          - not_null
+      - name: privileged_role
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["k8s-prod", "it-admin", "db-readonly"]
+
+  - name: mart_dormant_access
+    description: AC-2 recertification candidates — active identities idle past var('dormant_days').
+    columns:
+      - name: teleport_user
+        tests:
+          - unique   # one row per dormant identity
+          - not_null
+
+  - name: mart_offboarding_exceptions
+    description: >
+      THE HEADLINE invariant. Terminated identities with a post-termination access
+      event. The warehouse equivalent of the Lean proof; MUST be empty.
+    columns:
+      - name: teleport_user
+        tests:
+          - not_null
+      - name: event_uid
+        description: The specific violating event.
+        tests:
+          - not_null
+    # The zero-row invariant is enforced by the singular test
+    # tests/assert_no_offboarding_exceptions.sql — a query that returns the violating
+    # rows, which dbt treats as failures. We use a singular test rather than a
+    # dbt_utils macro so the invariant holds with zero external package dependencies:
+    # the SQL counterpart of `lake build` failing on a broken Lean proof. If
+    # Lifecycle Guard's Leaver path ever lets a terminated identity act, `dbt test`
+    # goes red.
+
+  - name: mart_access_summaries
+    description: Deterministic per-identity SUPER summary_payload consumed by the Anthropic narration step.
+    columns:
+      - name: teleport_user
+        tests:
+          - unique
+          - not_null
+      - name: summary_payload
+        tests:
+          - not_null

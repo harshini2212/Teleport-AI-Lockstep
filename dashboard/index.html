@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Lifecycle Guard — Identity Analytics</title>
+<style>
+:root{
+  --bg:#f4f5f7; --card:#ffffff; --line:#ecedf1; --line2:#e2e5ea;
+  --ink:#0f1729; --sub:#667085; --tert:#98a2b3;
+  --blue:#2f6bff; --bluesoft:#eef3ff; --green:#12b76a; --amber:#f79009; --red:#f04438;
+  --purple:#7a5af8; --pink:#ec4899; --teal:#14b8a6; --yellow:#eab308;
+  --radius:16px; --shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
+  --shadow2:0 4px 12px rgba(16,24,40,.06),0 12px 28px rgba(16,24,40,.05);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}
+button{font-family:inherit}
+/* ---- top nav ---- */
+.nav{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav-in{max-width:1240px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:18px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:750;font-size:16px;letter-spacing:-.01em;white-space:nowrap;flex:none}
+.mark{width:26px;height:26px;display:grid;grid-template-columns:1fr 1fr;grid-gap:3px;padding:3px;background:#0f1729;border-radius:8px}
+.mark span{border-radius:3px;background:#c7ccd6}.mark span:first-child{background:var(--blue)}
+.pills{display:flex;gap:2px;margin-left:6px;overflow-x:auto}
+.pill{padding:8px 14px;border-radius:999px;font-size:13.5px;font-weight:600;color:var(--sub);cursor:pointer;white-space:nowrap;border:0;background:transparent}
+.pill:hover{color:var(--ink);background:#f0f1f4}
+.pill.on{background:var(--ink);color:#fff}
+.grow{flex:1}
+.navsearch{display:flex;align-items:center;gap:8px;background:#f0f1f4;border:1px solid transparent;border-radius:10px;padding:8px 11px;min-width:190px}
+.navsearch:focus-within{background:#fff;border-color:var(--line2)}
+.navsearch input{border:0;background:transparent;outline:none;font-size:13px;width:100%;color:var(--ink)}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--sub);cursor:pointer;display:grid;place-items:center}
+.icon-btn:hover{color:var(--ink);border-color:var(--line2)}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2f6bff,#7a5af8);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+/* ---- page ---- */
+.wrap{max-width:1240px;margin:0 auto;padding:26px 22px 90px}
+.phead{display:flex;align-items:flex-end;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.phead h1{font-size:26px;font-weight:750;letter-spacing:-.02em;margin:0}
+.phead .crumb{color:var(--tert);font-size:13px;font-weight:600}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--tert);display:inline-block;vertical-align:middle}
+.dot.on{background:var(--green)}
+.scenpick{border:1px solid var(--line2);background:#fff;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
+.btn{background:var(--ink);color:#fff;border:0;border-radius:10px;padding:9px 15px;font-weight:650;font-size:13px;cursor:pointer}
+.btn:hover{opacity:.9}.btn:disabled{opacity:.5;cursor:default}
+.btn.pri{background:var(--blue)} .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line2)}
+.btn.ghost:hover{border-color:var(--ink);opacity:1}
+/* ---- grid + cards ---- */
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+.c23{grid-template-columns:2fr 1fr}
+@media(max-width:960px){.g4{grid-template-columns:repeat(2,1fr)}.g3,.g2,.c23{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.card h3{margin:0 0 2px;font-size:13px;font-weight:650;color:var(--ink)}
+.card .cap{color:var(--tert);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin:0 0 12px}
+.kpi .big{font-size:32px;font-weight:760;letter-spacing:-.03em;line-height:1}
+.kpi .lab{color:var(--sub);font-size:12.5px;margin-top:8px}
+.delta{font-size:12px;font-weight:700;padding:2px 7px;border-radius:999px}
+.delta.up{color:var(--green);background:#e7f7ee} .delta.down{color:var(--red);background:#fdecea} .delta.flat{color:var(--sub);background:#f0f1f4}
+/* segmented bar (Zentra gross volume) */
+.segbar{display:flex;height:12px;border-radius:8px;overflow:hidden;background:#f0f1f4}
+.segbar span{height:100%}
+.leg{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+.leg .it{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--sub)}
+.leg .sw{width:9px;height:9px;border-radius:3px}
+.leg b{color:var(--ink)}
+/* progress rows */
+.prow{margin:12px 0}
+.prow .t{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.prow .t b{font-weight:700}
+.track{height:8px;border-radius:6px;background:#f0f1f4;overflow:hidden}
+.track .fill{height:100%;border-radius:6px}
+/* dot matrix */
+.dm{display:grid;grid-template-columns:repeat(12,1fr);gap:5px;max-width:220px}
+.dm i{width:9px;height:9px;border-radius:3px;background:#e6e8ec}
+/* posture ring */
+.ring{display:flex;align-items:center;gap:16px}
+.ring svg{transform:rotate(-90deg)}
+.ring .rn{font-size:30px;font-weight:770;letter-spacing:-.02em}
+/* stat rail (chartmogul) */
+.rail .r{padding:13px 0;border-bottom:1px solid var(--line)}
+.rail .r:last-child{border-bottom:0}
+.rail .r .l{color:var(--sub);font-size:12px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.rail .r .v{font-size:22px;font-weight:750;margin-top:3px;display:flex;align-items:center;gap:8px}
+/* gradient AI card */
+.ai-card{background:linear-gradient(135deg,#ffe1d0 0%,#efd9fb 45%,#d3e4fd 100%);border:1px solid #f0e2f5;border-radius:var(--radius);padding:20px;color:#1b1030;box-shadow:var(--shadow)}
+.ai-card .tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.6);border-radius:999px;padding:4px 10px}
+.ai-card .h{font-size:30px;font-weight:780;letter-spacing:-.02em;margin:14px 0 6px}
+.ai-card .b{font-size:13.5px;line-height:1.5;color:#3a2a52}
+/* NL ask bar */
+.ask{background:var(--card);border:1px solid var(--line2);border-radius:14px;box-shadow:var(--shadow);padding:6px 6px 6px 16px;display:flex;align-items:center;gap:10px}
+.ask svg{color:var(--purple);flex:none}
+.ask input{flex:1;border:0;outline:none;font-size:14.5px;background:transparent;color:var(--ink);padding:10px 0}
+.ask .btn{border-radius:10px}
+.ask-ans{margin-top:12px;border-left:3px solid var(--purple);background:#faf8ff;border-radius:0 12px 12px 0;padding:14px 16px;font-size:14px;line-height:1.55;color:#241a3a}
+/* tables */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;color:var(--tert);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line)}
+.tbl td{padding:12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tr.clk{cursor:pointer} .tbl tr.clk:hover td{background:#f8f9fb}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums}
+/* chips + badges */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;background:#f2f4f7;border:1px solid var(--line2);color:#344054;padding:2px 8px;border-radius:6px;font-family:ui-monospace,Menlo,monospace}
+.tag2{font-size:11px;color:#5b3ff0;background:#efeaff;border:1px solid #e2daff;border-radius:999px;padding:2px 9px;font-weight:600}
+.bdg{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.bdg.human{background:#eef1f6;color:#475467} .bdg.agent{background:#e6faf5;color:#0d9488}
+.bdg.active{background:#e7f7ee;color:#067647} .bdg.terminated{background:#fdecea;color:#b42318}
+.bdg.rnone{background:#e7f7ee;color:#067647} .bdg.rmedium{background:#eef3ff;color:#2f57d6} .bdg.rhigh{background:#fef4e6;color:#b54708} .bdg.rcritical{background:#fdecea;color:#b42318}
+.pill2{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+.ok{background:#e7f7ee;color:#067647} .bad{background:#fdecea;color:#b42318} .warn{background:#fef4e6;color:#b54708}
+.mono{font-family:ui-monospace,Menlo,monospace} .sub{color:var(--sub)} .muted{color:var(--tert)}
+.fchips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.fc{font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line2);color:var(--sub);cursor:pointer;background:#fff;font-weight:600}
+.fc.on{border-color:var(--ink);color:var(--ink);background:#f4f5f7}
+.sev{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.sev.critical{color:var(--red)} .sev.high{color:var(--amber)} .sev.medium{color:var(--blue)}
+.det{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#475467}
+/* findings list */
+.frow{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;border-left:3px solid var(--line)}
+.frow:hover{box-shadow:var(--shadow)}
+.frow.critical{border-left-color:var(--red)} .frow.high{border-left-color:var(--amber)} .frow.medium{border-left-color:var(--blue)}
+.list{display:grid;gap:10px}
+/* scenario cards */
+.scen{cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:box-shadow .12s,transform .12s}
+.scen:hover{box-shadow:var(--shadow2);transform:translateY(-2px)}
+.scen.cur{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+.scen .t{font-weight:750;font-size:16px}
+.scen .d{color:var(--sub);font-size:13px;line-height:1.5}
+/* activity */
+.tl{position:relative;padding-left:18px}
+.tl .ev{position:relative;padding:9px 0;border-bottom:1px solid var(--line)}
+.tl .ev:last-child{border-bottom:0}
+.tl .ev::before{content:'';position:absolute;left:-18px;top:15px;width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px #eaf0ff}
+/* banner */
+.banner{border-radius:12px;padding:14px 16px;font-weight:600;font-size:13.5px}
+.banner.good{background:#e7f7ee;border:1px solid #b9ead0;color:#067647}
+.banner.bad{background:#fef3f2;border:1px solid #fcd9d5;color:#b42318}
+/* drawer */
+#backdrop{position:fixed;inset:0;background:rgba(16,24,40,.35);z-index:50;opacity:0;transition:opacity .15s}
+#backdrop.show{opacity:1}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(540px,96vw);background:#fff;z-index:60;transform:translateX(100%);
+  transition:transform .2s ease;overflow-y:auto;box-shadow:-24px 0 60px rgba(16,24,40,.18)}
+.drawer.show{transform:translateX(0)}
+.dh{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:18px 20px;display:flex;align-items:center;gap:12px;z-index:2}
+.db{padding:18px 20px}
+.close{margin-left:auto;background:#f4f5f7;border:1px solid var(--line);border-radius:9px;padding:6px 11px;cursor:pointer;color:var(--ink)}
+.sec{margin-top:20px} .sec h4{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--tert);margin:0 0 9px;font-weight:700}
+.kv{display:flex;gap:10px;font-size:13px;padding:4px 0} .kv .k{color:var(--sub);min-width:104px}
+/* forms */
+.form{display:grid;gap:12px;max-width:520px}
+label{font-size:12px;color:var(--sub);font-weight:600}
+input[type=text],select{width:100%;background:#fff;border:1px solid var(--line2);border-radius:10px;color:var(--ink);padding:10px 11px;font-size:13.5px;outline:none}
+input:focus,select:focus{border-color:var(--blue)}
+.rowf{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* misc */
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:11px;z-index:80;font-size:13px;box-shadow:var(--shadow2)}
+.hidden{display:none}
+.spin{width:16px;height:16px;border:2px solid #e6e8ec;border-top-color:var(--purple);border-radius:50%;display:inline-block;animation:sp .7s linear infinite;vertical-align:-3px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{color:var(--tert);padding:30px;text-align:center}
+</style>
+</head>
+<body>
+<nav class="nav"><div class="nav-in">
+  <div class="logo"><span class="mark"><span></span><span></span><span></span><span></span></span>Lifecycle Guard</div>
+  <div class="pills" id="pills"></div>
+  <div class="grow"></div>
+  <div class="navsearch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="search" placeholder="Search…" autocomplete="off"/></div>
+  <button class="icon-btn" data-act="reset" title="Reset scenario">↺</button>
+  <div class="avatar" title="IT Security">IT</div>
+</div></nav>
+
+<div class="wrap"><div id="view"></div></div>
+
+<div id="backdrop" class="hidden"></div>
+<aside class="drawer" id="drawer"><div id="drawerContent"></div></aside>
+<div id="toast" class="hidden"></div>
+
+<script>
+const TABS=[
+  {id:'overview',label:'Overview'},{id:'identities',label:'Identities'},{id:'devices',label:'Devices'},
+  {id:'findings',label:'Findings'},{id:'review',label:'Access review'},{id:'scenarios',label:'Scenarios'},{id:'actions',label:'Actions'}
+];
+const state={trace:null,scenarios:[],live:false,tab:'overview',search:'',findingFilter:'all',kindFilter:'all',
+  review:null,reviewEnabled:true,reviewLoading:false,busy:false,ask:'',askAnswer:null,askLoading:false};
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const chips=rs=>(rs||[]).map(r=>`<span class="chip">${esc(r)}</span>`).join('')||'<span class="muted">—</span>';
+const SEV={critical:3,high:2,medium:1};
+const isAgentKey=k=>k.startsWith('spiffe://')||k.startsWith('agent:');
+async function getJSON(p){const r=await fetch(p,{cache:'no-store'});if(!r.ok)throw new Error(r.status);return r.json();}
+async function postJSON(p,b){const r=await fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error((await r.text())||r.status);return r.json();}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.remove('hidden');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add('hidden'),2600);}
+
+/* ---------- identity model ---------- */
+function buildIdentities(t){
+  const map={};
+  const ensure=(key,name)=>{if(!map[key])map[key]={id:key,kind:isAgentKey(key)?'agent':'human',name:name||key,
+    email:isAgentKey(key)?null:key,spiffe:isAgentKey(key)?key:null,department:null,title:null,status:'active',
+    roles:[],scope:[],events:[],sessions:[],device:null,findings:[],jit:[],present:false};if(name)map[key].name=name;return map[key];};
+  (t.steps||[]).forEach(s=>{const e=s.event.employee;const it=ensure(e.email,e.name);
+    it.department=e.department;it.title=e.title;it.status=e.status;
+    it.events.push({type:s.event.type,at:s.event.timestamp,source:s.event.source,actions:s.actions});
+    s.actions.forEach(a=>{if(a.roles&&a.roles.length)it.roles=a.roles;});});
+  (t.agents||[]).forEach(s=>{const sub=s.event.subject;const it=ensure(sub.spiffe_id,sub.name);
+    it.status=sub.status;it.scope=sub.scope||it.scope;it.spiffe=sub.spiffe_id;
+    it.events.push({type:s.event.type,at:s.event.timestamp,source:s.event.source,actions:s.actions});
+    s.actions.forEach(a=>{if(a.roles&&a.roles.length)it.roles=a.roles;});});
+  (t.final_state.users||[]).forEach(u=>{const it=ensure(u.name);it.roles=u.roles||it.roles;it.present=true;});
+  (t.final_state.sessions||[]).forEach(se=>{ensure(se.user).sessions.push(se);});
+  (t.devices||[]).forEach(d=>{if(map[d.user_email])map[d.user_email].device=d;});
+  (t.findings||[]).forEach(f=>{ensure(f.user).findings.push(f);});
+  (t.jit_decisions||[]).forEach(d=>{ensure(d.user).jit.push(d);});
+  Object.values(map).forEach(it=>{it.risk=it.findings.reduce((m,f)=>Math.max(m,SEV[f.severity]||0),0);
+    it.riskLabel=['none','medium','high','critical'][it.risk];});
+  return map;
+}
+const identityList=()=>Object.values(buildIdentities(state.trace));
+function sevCounts(){const c={critical:0,high:0,medium:0};(state.trace.findings||[]).forEach(f=>c[f.severity]++);return c;}
+function posture(){const c=sevCounts();return Math.max(0,100-(c.critical*22+c.high*11+c.medium*4));}
+
+/* ---------- charts ---------- */
+function segBar(items){const tot=items.reduce((s,i)=>s+i.v,0)||1;
+  const bar=items.filter(i=>i.v>0).map(i=>`<span style="width:${(i.v/tot*100).toFixed(1)}%;background:${i.c}"></span>`).join('');
+  const leg=items.map(i=>`<div class="it"><span class="sw" style="background:${i.c}"></span>${esc(i.l)} <b>${i.v}</b></div>`).join('');
+  return `<div class="segbar">${bar||'<span style="width:100%;background:#e7f7ee"></span>'}</div><div class="leg">${leg}</div>`;}
+function ring(score){const col=score>=85?'var(--green)':score>=60?'var(--amber)':'var(--red)';
+  const r=26,c=2*Math.PI*r,off=c*(1-score/100);
+  return `<div class="ring"><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${r}" fill="none" stroke="#eef0f3" stroke-width="8"/>
+    <circle cx="32" cy="32" r="${r}" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg>
+    <div><div class="rn" style="color:${col}">${score}</div><div class="sub" style="font-size:12px">posture score</div></div></div>`;}
+function dotMatrix(count,total,color){let s='';for(let i=0;i<total;i++)s+=`<i style="background:${i<count?color:'#e6e8ec'}"></i>`;return `<div class="dm">${s}</div>`;}
+function progressRow(label,val,max,color){return `<div class="prow"><div class="t"><span class="sub">${esc(label)}</span><b>${esc(val)}</b></div>
+  <div class="track"><div class="fill" style="width:${Math.min(100,max?val/max*100:0).toFixed(0)}%;background:${color}"></div></div></div>`;}
+
+/* ---------- chrome ---------- */
+function mountChrome(){
+  document.getElementById('pills').innerHTML=TABS.map(t=>`<button class="pill" data-tab="${t.id}" id="pill-${t.id}">${t.label}</button>`).join('');
+  const s=document.getElementById('search');s.addEventListener('input',()=>{state.search=s.value.trim().toLowerCase();renderView();});
+}
+function updateChrome(){
+  document.querySelectorAll('#pills .pill').forEach(p=>p.classList.toggle('on',p.id==='pill-'+state.tab));
+}
+function renderView(){
+  updateChrome();const v=document.getElementById('view');
+  if(!state.trace){v.innerHTML=`<div class="card"><div class="banner bad">Backend not reachable.</div><p class="sub" style="margin-top:10px">Run <span class="mono">cd teleport-lifecycle-guard/go && go run ./cmd/server</span> then refresh.</p></div>`;return;}
+  v.innerHTML=({overview:vOverview,identities:vIdentities,devices:vDevices,findings:vFindings,review:vReview,scenarios:vScenarios,actions:vActions}[state.tab]||vOverview)();
+}
+function phead(title,crumb,right){return `<div class="phead"><h1>${esc(title)}</h1>
+  <span class="crumb"><span class="dot ${state.live?'on':''}"></span> ${state.live?'live':'offline'} · ${esc(crumb||'')}</span>
+  <div class="grow"></div>${right||''}</div>`;}
+
+/* ---------- overview ---------- */
+function insightText(){const c=sevCounts(),ids=identityList();
+  if(c.critical){const top=ids.filter(i=>i.risk===3).sort((a,b)=>b.findings.length-a.findings.length)[0];
+    return {h:`${c.critical} critical exposure${c.critical>1?'s':''}`,b:`Biggest risk: <b>${esc(top?top.name:'—')}</b>. ${top&&top.findings[0]?esc(top.findings[0].summary):''}`};}
+  if(c.high) return {h:`${c.high} high-severity finding${c.high>1?'s':''}`,b:'Privilege or device-trust issues need review before the quarter closes.'};
+  if(c.medium) return {h:`${c.medium} item${c.medium>1?'s':''} to review`,b:'Low-severity signals — step-up verification recommended.'};
+  return {h:'Fully compliant',b:'Every identity is within policy, on a managed and compliant device.'};}
+function vOverview(){
+  const t=state.trace,ids=identityList(),c=sevCounts();
+  const humans=ids.filter(i=>i.kind==='human').length,agents=ids.filter(i=>i.kind==='agent').length;
+  const dev=t.devices||[],dcompliant=dev.filter(d=>d.managed&&d.compliance.overall).length;
+  const total=(t.findings||[]).length,score=posture(),ins=insightText();
+  const seg=segBar([{l:'Critical',v:c.critical,c:'var(--red)'},{l:'High',v:c.high,c:'var(--amber)'},{l:'Medium',v:c.medium,c:'var(--blue)'},{l:'Clean',v:Math.max(0,ids.length-new Set((t.findings||[]).map(f=>f.user)).size),c:'#12b76a'}]);
+  const acts=[];(t.steps||[]).forEach(s=>acts.push({at:s.event.timestamp,who:s.event.employee.name,type:s.event.type,actions:s.actions}));
+  (t.agents||[]).forEach(s=>acts.push({at:s.event.timestamp,who:s.event.subject.name+' · agent',type:s.event.type,actions:s.actions}));
+  acts.sort((a,b)=>new Date(b.at)-new Date(a.at));
+  const tl=acts.slice(0,7).map(a=>`<div class="ev"><b>${esc(a.who)}</b> <span class="tag2">${esc(a.type)}</span>
+    <div class="muted" style="font-size:12px;margin:3px 0">${new Date(a.at).toLocaleString()}</div>
+    <div class="chips">${a.actions.map(x=>`<span class="chip">${esc(x.kind.replace(/_/g,' '))}</span>`).join('')}</div></div>`).join('');
+  // ask answer
+  const askBlock=state.askLoading?`<div class="ask-ans"><span class="spin"></span> Asking Claude…</div>`
+    : state.askAnswer?`<div class="ask-ans">${esc(state.askAnswer)}</div>`:'';
+  return phead('Overview',t.scenario.title,`<button class="scenpick" data-tab="scenarios">${esc(t.scenario.title)} ▾</button>`)+`
+  <div class="ask"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 4.6L18.5 8 13.9 9.4 12 14l-1.9-4.6L5.5 8l4.6-1.4L12 2zM19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/></svg>
+    <input id="askInput" placeholder="Ask anything — e.g. which identities are the biggest risk right now?" value="${esc(state.ask)}"/>
+    <button class="btn pri" data-act="ask">Ask AI</button></div>${askBlock}
+  <div class="grid g4" style="margin-top:16px">
+    <div class="card kpi"><p class="cap">Posture</p>${ring(score)}</div>
+    <div class="card kpi"><p class="cap">Identities</p><div class="big">${humans}<span class="muted" style="font-size:16px"> / ${agents} agents</span></div>
+      <div style="margin-top:12px">${dotMatrix(Math.min(24,ids.length),24,'var(--blue)')}</div></div>
+    <div class="card kpi"><p class="cap">Open findings</p><div class="big" style="color:${total?'var(--red)':'var(--green)'}">${total}</div>
+      <div style="margin-top:14px">${seg}</div></div>
+    <div class="card kpi"><p class="cap">Device compliance</p><div class="big">${dcompliant}<span class="muted" style="font-size:16px"> / ${dev.length}</span></div>
+      <div style="margin-top:12px">${progressRow('Managed & compliant',dcompliant,dev.length||1,'var(--green)')}${progressRow('Total enrolled',dev.length,dev.length||1,'var(--blue)')}</div></div>
+  </div>
+  <div class="grid c23" style="margin-top:16px">
+    <div class="card"><p class="cap">Recent lifecycle activity</p><div class="tl">${tl||'<div class="empty">no activity</div>'}</div></div>
+    <div style="display:grid;gap:16px">
+      <div class="ai-card"><span class="tag">✦ AI insight</span><div class="h">${ins.h}</div><div class="b">${ins.b}</div>
+        <button class="btn" style="margin-top:14px;background:rgba(255,255,255,.75);color:#1b1030" data-tab="review">Run full review →</button></div>
+      <div class="card"><p class="cap">Signal rail</p><div class="rail">
+        ${railRow('Critical',c.critical,'var(--red)')}${railRow('High',c.high,'var(--amber)')}${railRow('Medium',c.medium,'var(--blue)')}
+        ${railRow('Live sessions',(t.final_state.sessions||[]).length,'var(--purple)')}${railRow('Active locks',(t.final_state.locks||[]).length,'var(--teal)')}</div></div>
+    </div>
+  </div>`;
+}
+function railRow(l,v,col){return `<div class="r"><div class="l">${esc(l)}</div><div class="v"><span class="dot" style="background:${col};width:8px;height:8px"></span>${v}</div></div>`;}
+
+/* ---------- identities ---------- */
+function matchIdentity(i){const q=state.search;if(state.kindFilter!=='all'&&i.kind!==state.kindFilter)return false;
+  if(!q)return true;return (i.name+' '+(i.email||'')+' '+(i.spiffe||'')+' '+i.roles.join(' ')+' '+(i.department||'')).toLowerCase().includes(q);}
+function vIdentities(){
+  const ids=identityList().filter(matchIdentity).sort((a,b)=>b.risk-a.risk||a.name.localeCompare(b.name));
+  const seg=`<div class="fchips">${['all','human','agent'].map(k=>`<div class="fc ${state.kindFilter===k?'on':''}" data-kind="${k}">${k==='all'?'All':k==='human'?'Humans':'AI agents'}</div>`).join('')}</div>`;
+  const rows=ids.map(i=>`<tr class="clk" data-open-identity="${esc(i.id)}">
+    <td><div style="font-weight:650">${esc(i.name)} <span class="bdg ${i.kind}">${i.kind}</span></div><div class="sub mono" style="font-size:12px">${esc(i.email||i.spiffe||'')}</div></td>
+    <td><span class="bdg ${i.status}">${esc(i.status)}</span></td>
+    <td><div class="chips">${chips(i.roles.slice(0,4))}${i.roles.length>4?`<span class="chip">+${i.roles.length-4}</span>`:''}</div></td>
+    <td><span class="bdg r${i.riskLabel}">${i.riskLabel==='none'?'ok':i.riskLabel}</span></td>
+    <td class="num sub">${i.findings.length||''}</td></tr>`).join('');
+  return phead('Identities',ids.length+' shown')+seg+`<div class="card" style="padding:6px 6px">
+    <table class="tbl"><thead><tr><th>Identity</th><th>Status</th><th>Roles</th><th>Risk</th><th class="num">Findings</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="5" class="empty">No identities match.</td></tr>'}</tbody></table></div>`;
+}
+/* ---------- devices ---------- */
+function vDevices(){
+  const q=state.search,dev=(state.trace.devices||[]).filter(d=>!q||(d.serial_number+' '+d.user_email).toLowerCase().includes(q));
+  const rows=dev.map(d=>`<tr class="clk" data-open-device="${esc(d.serial_number)}">
+    <td class="mono" style="font-weight:600">${esc(d.serial_number)}</td><td class="mono sub">${esc(d.user_email)}</td>
+    <td>${d.managed?'<span class="pill2 ok">managed</span>':'<span class="pill2 bad">unmanaged</span>'}</td>
+    <td>${d.compliance.overall?'<span class="pill2 ok">compliant</span>':(d.managed?'<span class="pill2 warn">non-compliant</span>':'<span class="pill2 bad">n/a</span>')}</td></tr>`).join('');
+  return phead('Devices','Jamf posture → Teleport Device Trust')+`<div class="card" style="padding:6px 6px">
+    <table class="tbl"><thead><tr><th>Serial</th><th>Identity</th><th>Managed</th><th>Compliant</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="4" class="empty">No devices in this scenario.</td></tr>'}</tbody></table></div>`;
+}
+/* ---------- findings ---------- */
+function vFindings(){
+  const q=state.search,ff=state.findingFilter,c=sevCounts();
+  let fs=(state.trace.findings||[]).map((f,i)=>({...f,_i:i}));
+  if(ff!=='all')fs=fs.filter(f=>f.severity===ff);
+  if(q)fs=fs.filter(f=>(f.detector+' '+f.summary+' '+f.user).toLowerCase().includes(q));
+  const chipsF=`<div class="fchips">${[['all','All ('+(state.trace.findings||[]).length+')'],['critical','Critical ('+c.critical+')'],['high','High ('+c.high+')'],['medium','Medium ('+c.medium+')']]
+    .map(([k,l])=>`<div class="fc ${ff===k?'on':''}" data-finding-filter="${k}">${l}</div>`).join('')}</div>`;
+  const body=fs.map(f=>`<div class="frow ${f.severity}" data-open-finding="${f._i}">
+    <div style="flex:1"><div style="display:flex;gap:8px;align-items:center"><span class="sev ${f.severity}">${f.severity}</span><span class="det">${esc(f.detector)}</span></div>
+      <div style="margin-top:5px;color:#344054">${esc(f.summary)}</div></div>
+    <span class="chip">${esc(f.user)}</span></div>`).join('');
+  return phead('Findings','anomaly detection & device trust')+chipsF+`<div class="list">${body||'<div class="banner good">✓ No findings — this scenario is clean.</div>'}</div>`;
+}
+/* ---------- review ---------- */
+function vReview(){
+  if(state.reviewLoading)return phead('Access review','')+`<div class="card"><span class="spin"></span> Claude is reading the engine state and writing the quarterly review… (~40s)</div>`;
+  if(!state.reviewEnabled)return phead('Access review','')+`<div class="card"><div class="banner bad">LLM review disabled — no ANTHROPIC_API_KEY on the server.</div></div>`;
+  if(!state.review)return phead('Access review','')+`<div class="card"><p style="margin:0 0 12px">An LLM (Claude) reads the <b>deterministic</b> engine output and writes a SOC 2 quarterly access review — per-identity risk, recommendations, and a compliance summary. It only narrates; every recommendation requires human approval.</p><button class="btn pri" data-act="review">Run access review</button></div>`;
+  const r=state.review,rc=l=>l==='low'?'rnone':l==='medium'?'rmedium':l==='high'?'rhigh':'rcritical';
+  return phead('Access review',r.period,`<button class="btn ghost" data-act="review">↻ Re-run</button>`)+`
+  <div class="card"><p class="cap">Executive summary</p><div style="font-size:15px;line-height:1.6">${esc(r.summary)}</div></div>
+  <div class="grid g2" style="margin-top:16px">${(r.identities||[]).map(i=>`<div class="card"><div style="display:flex;align-items:center;gap:8px"><b>${esc(i.identity)}</b><span class="bdg ${rc(i.risk_level)}">${esc(i.risk_level)}</span></div><div class="sub" style="margin-top:7px;line-height:1.55">${esc(i.narrative)}</div></div>`).join('')}</div>
+  <div class="card" style="margin-top:16px"><p class="cap">Recommended actions · all require human approval</p>
+    <table class="tbl"><thead><tr><th>Action</th><th>Identity</th><th>Rationale</th></tr></thead><tbody>
+    ${(r.recommendations||[]).map(x=>`<tr><td><span class="chip">${esc(x.action)}</span></td><td class="mono">${esc(x.identity)}</td><td class="sub">${esc(x.rationale)}</td></tr>`).join('')}</tbody></table></div>
+  <div class="card" style="margin-top:16px"><p class="cap">SOC 2 / least-privilege posture</p><div class="sub" style="line-height:1.6">${esc(r.soc2_summary)}</div></div>`;
+}
+/* ---------- scenarios ---------- */
+function vScenarios(){
+  const q=state.search,cur=state.trace.scenario.id;
+  const list=state.scenarios.filter(s=>!q||(s.title+' '+s.description+' '+s.tags.join(' ')).toLowerCase().includes(q));
+  return phead('Scenarios','pick an org to explore')+`<div class="grid g2">${list.map(s=>`<div class="card scen ${s.id===cur?'cur':''}" data-load-scenario="${esc(s.id)}">
+    <div class="t">${esc(s.title)} ${s.id===cur?'<span class="pill2 ok">loaded</span>':''}</div><div class="d">${esc(s.description)}</div>
+    <div class="chips">${s.tags.map(t=>`<span class="tag2">${esc(t)}</span>`).join('')}</div>
+    <button class="btn ${s.id===cur?'ghost':'pri'}" style="align-self:flex-start">${s.id===cur?'Reload':'Load scenario'}</button></div>`).join('')||'<div class="empty">No scenarios match.</div>'}</div>`;
+}
+/* ---------- actions ---------- */
+function vActions(){
+  const ids=identityList();
+  const humans=ids.filter(i=>i.kind==='human'&&i.present!==false);
+  const agentNames=[...new Set(ids.filter(i=>i.kind==='agent').map(i=>i.name))];
+  const withSessions=ids.filter(i=>i.sessions.length);
+  const opt=a=>a.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  const depts=Object.keys(state.trace.policy.department_roles);
+  const roles=[...new Set(Object.values(state.trace.policy.department_roles).flat())].sort();
+  const scopes=`<option>mcp-gateway</option><option>kyra-memory</option><option>kyra-calendar</option>`;
+  const card=(title,prim,body)=>`<div class="card"><h3>${title}</h3><p class="cap">${prim}</p>${body}</div>`;
+  return phead('Actions','real Teleport operations · every button drives the live engine')+`
+  <h2 style="margin-top:4px">Identity lifecycle</h2>
+  <div class="grid g3">
+    ${card('Onboard · Joiner','provision least-privilege from department',`<form class="form" data-form="onboard">
+      <div><label>Name</label><input type="text" name="name" value="Grace Lin"></div>
+      <div><label>Email</label><input type="text" name="email" value="grace@goteleport.com"></div>
+      <div><label>Department</label><select name="department">${opt(depts)}</select></div>
+      <button class="btn pri">Onboard</button></form>`)}
+    ${card('Transfer · Mover','reconcile roles on a department change',`<form class="form" data-form="move">
+      <div><label>Identity</label><select name="email">${opt(humans.map(h=>h.email))}</select></div>
+      <div><label>New department</label><select name="department">${opt(depts)}</select></div>
+      <button class="btn">Transfer &amp; reconcile</button></form>`)}
+    ${card('Offboard · Leaver','<span class="mono">tctl lock</span> + deprovision — provably total',`<form class="form" data-form="offboard">
+      <label>Identity</label><select name="email">${opt(humans.map(h=>h.email))}</select>
+      <button class="btn">Offboard &amp; revoke</button></form>`)}
+  </div>
+  <h2>Just-in-time &amp; elevation</h2>
+  <div class="grid g2">
+    ${card('Request JIT access','<span class="mono">tsh request create</span> — auto-approve or route to human',`<form class="form" data-form="jit">
+      <div class="rowf"><div><label>Identity</label><select name="user">${opt(humans.map(h=>h.email))}</select></div><div><label>Role</label><select name="requested">${opt(roles)}</select></div></div>
+      <button class="btn pri">Request</button></form><div id="res-jit" style="margin-top:10px"></div>`)}
+    ${card('Break-glass emergency access','elevated role · heavy audit · human-approved',`<form class="form" data-form="breakglass">
+      <label>Identity</label><select name="user">${opt(humans.map(h=>h.email))}</select>
+      <button class="btn">Request break-glass</button></form><div id="res-breakglass" style="margin-top:10px"></div>`)}
+  </div>
+  <h2>Incident response</h2>
+  <div class="grid g3">
+    ${card('Emergency lock','<span class="mono">tctl lock --user --message</span> — sever access now',`<form class="form" data-form="lock">
+      <div><label>Target identity</label><select name="target">${opt(ids.map(i=>i.id))}</select></div>
+      <div><label>Reason</label><input type="text" name="reason" value="suspected credential compromise"></div>
+      <button class="btn" style="background:var(--red)">Lock now</button></form>`)}
+    ${card('Terminate live sessions','<span class="mono">tsh sessions kill</span> — cut active connections',`<form class="form" data-form="terminate">
+      <label>Identity</label><select name="user">${opt((withSessions.length?withSessions:ids).map(i=>i.id))}</select>
+      <button class="btn" style="background:var(--amber)">Terminate sessions</button></form>`)}
+    ${card('Stolen-device playbook','one click: lock + kill every live session',`<form class="form" data-form="incident">
+      <label>Compromised identity</label><select name="target">${opt(ids.map(i=>i.id))}</select>
+      <button class="btn" style="background:var(--red)">Run containment</button></form>`)}
+  </div>
+  <h2>Device trust</h2>
+  <div class="grid g2">
+    ${card('Set device posture','Jamf inventory → Teleport <span class="mono">device_trust_mode</span>',`<form class="form" data-form="device">
+      <div class="rowf"><div><label>Owner</label><select name="email">${opt(humans.map(h=>h.email))}</select></div>
+        <div><label>Posture</label><select name="posture"><option value="ok">Managed &amp; compliant</option><option value="noncompliant">Non-compliant (quarantine)</option><option value="unmanaged">Unmanaged (BYOD)</option></select></div></div>
+      <div><label>Serial (optional)</label><input type="text" name="serial" placeholder="auto-assign"></div>
+      <button class="btn pri">Apply posture</button></form>`)}
+    <div class="ai-card" style="display:flex;flex-direction:column;justify-content:center"><span class="tag">✦ try this</span>
+      <div class="h" style="font-size:19px">Device trust is the endpoint pillar</div>
+      <div class="b">Set an owner's Mac to <b>non-compliant</b>, then open <b>Findings</b> — a session from it is flagged and gated. Set it back to compliant to clear.</div></div>
+  </div>
+  <h2>AI agents · Machine &amp; Workload Identity</h2>
+  <div class="grid g3">
+    ${card('Deploy agent','issue a scoped SPIFFE workload identity',`<form class="form" data-form="agent">
+      <div><label>Agent name</label><input type="text" name="name" value="atlas"></div>
+      <div><label>Scope</label><select name="scope">${scopes}</select></div>
+      <button class="btn pri">Issue identity</button></form>`)}
+    ${card('Re-scope agent','rewrite scope · no new long-lived secret',`<form class="form" data-form="agent-rescope">
+      <div><label>Agent</label><select name="name">${opt(agentNames)}</select></div>
+      <div><label>New scope</label><select name="scope">${scopes}</select></div>
+      <button class="btn">Re-scope</button></form>`)}
+    ${card('Revoke &amp; lock agent','<span class="mono">tctl bots rm</span> + lock — provably total',`<form class="form" data-form="agent-revoke">
+      <label>Agent</label><select name="name">${opt(agentNames)}</select>
+      <button class="btn" style="background:var(--red)">Revoke identity</button></form>`)}
+  </div>`;
+}
+
+/* ---------- drawers ---------- */
+function openDrawer(html){document.getElementById('drawerContent').innerHTML=html;
+  const d=document.getElementById('drawer'),b=document.getElementById('backdrop');b.classList.remove('hidden');
+  requestAnimationFrame(()=>{b.classList.add('show');d.classList.add('show');});}
+function closeDrawer(){const d=document.getElementById('drawer'),b=document.getElementById('backdrop');
+  d.classList.remove('show');b.classList.remove('show');setTimeout(()=>b.classList.add('hidden'),180);}
+function identityDrawer(id){const it=buildIdentities(state.trace)[id];if(!it)return;
+  const life=it.events.slice().sort((a,b)=>new Date(a.at)-new Date(b.at)).map(e=>{
+    const act=e.actions.map(a=>`<div style="margin-top:4px"><span class="chip">${esc(a.kind.replace(/_/g,' '))}</span> <span class="sub" style="font-size:12px">${esc(a.reason)}</span>${a.roles&&a.roles.length?`<div class="chips" style="margin-top:4px">${chips(a.roles)}</div>`:''}</div>`).join('');
+    return `<div class="ev"><b>${esc(e.type)}</b> <span class="sub" style="font-size:12px">· ${esc(e.source)} · ${new Date(e.at).toLocaleString()}</span>${act}</div>`;}).join('');
+  const sess=it.sessions.map(s=>`<div class="kv"><span class="k">${esc(s.kind)}</span><span>${esc(s.source_ip)} · ${new Date(s.started).toLocaleString()}</span></div>`).join('')||'<div class="muted">none</div>';
+  const dev=it.device?`<div class="kv"><span class="k">Serial</span><span class="mono">${esc(it.device.serial_number)}</span></div>
+    <div class="kv"><span class="k">Managed</span><span>${it.device.managed?'<span class="pill2 ok">yes</span>':'<span class="pill2 bad">no</span>'}</span></div>
+    <div class="chips" style="margin-top:8px">${Object.entries({FileVault:'filevault',Firewall:'firewall',Gatekeeper:'gatekeeper',SIP:'sip','Lock':'screen_lock','Updates':'auto_updates','NoGuest':'guest_disabled'}).map(([lab,k])=>`<span class="chip" style="color:${it.device.compliance[k]?'var(--green)':'var(--red)'}">${lab} ${it.device.compliance[k]?'✓':'✗'}</span>`).join('')}</div>`:'<div class="muted">no device on record</div>';
+  const finds=it.findings.map(f=>`<div class="frow ${f.severity}" style="cursor:default;margin-bottom:8px"><div style="flex:1"><span class="sev ${f.severity}">${f.severity}</span> <span class="det">${esc(f.detector)}</span><div style="margin-top:4px;color:#344054">${esc(f.summary)}</div><div class="sub" style="font-size:12px;margin-top:4px">↳ ${esc(f.remediation)}</div></div></div>`).join('')||'<div class="muted">none — within policy</div>';
+  const jit=it.jit.map(d=>`<div class="kv"><span class="k">${esc(d.requested)}</span><span>${d.auto_approve?'<span class="pill2 ok">auto-approved</span>':'<span class="pill2 warn">routed to human</span>'} <span class="sub" style="font-size:12px">${esc(d.reason)}</span></span></div>`).join('')||'<div class="muted">none</div>';
+  return `<div class="dh"><div><div style="font-weight:700;font-size:16px">${esc(it.name)}</div><div class="sub mono" style="font-size:12px">${esc(it.email||it.spiffe||'')}</div></div><button class="close" data-close>Close ✕</button></div>
+    <div class="db"><div class="chips"><span class="bdg ${it.kind}">${it.kind}</span><span class="bdg ${it.status}">${esc(it.status)}</span><span class="bdg r${it.riskLabel}">${it.riskLabel==='none'?'ok':it.riskLabel} risk</span></div>
+    <div class="sec"><h4>${it.kind==='agent'?'Scope &amp; roles':'Department &amp; roles'}</h4>
+      ${it.department?`<div class="kv"><span class="k">Department</span><span>${esc(it.department)} · ${esc(it.title||'')}</span></div>`:''}
+      ${it.scope&&it.scope.length?`<div class="kv"><span class="k">Capabilities</span><span>${chips(it.scope)}</span></div>`:''}
+      <div class="kv"><span class="k">Roles</span><span>${chips(it.roles)}</span></div></div>
+    <div class="sec"><h4>Lifecycle</h4><div class="tl">${life||'<div class="muted">no recorded events</div>'}</div></div>
+    <div class="sec"><h4>Live sessions</h4>${sess}</div>
+    <div class="sec"><h4>Device posture</h4>${dev}</div>
+    <div class="sec"><h4>Findings</h4>${finds}</div>
+    <div class="sec"><h4>JIT decisions</h4>${jit}</div></div>`;
+}
+function deviceDrawer(serial){const d=(state.trace.devices||[]).find(x=>x.serial_number===serial);if(!d)return;
+  const controls=Object.entries({FileVault:'filevault',Firewall:'firewall',Gatekeeper:'gatekeeper',SIP:'sip','Screen lock':'screen_lock','Auto-updates':'auto_updates','Guest disabled':'guest_disabled'})
+    .map(([lab,k])=>`<div class="kv"><span class="k">${lab}</span><span>${d.compliance[k]?'<span class="pill2 ok">pass</span>':'<span class="pill2 bad">fail</span>'}</span></div>`).join('');
+  return `<div class="dh"><div><div style="font-weight:700;font-size:16px" class="mono">${esc(d.serial_number)}</div><div class="sub mono" style="font-size:12px">${esc(d.user_email)}</div></div><button class="close" data-close>Close ✕</button></div>
+    <div class="db"><div class="chips">${d.managed?'<span class="pill2 ok">managed</span>':'<span class="pill2 bad">unmanaged</span>'}${d.compliance.overall?'<span class="pill2 ok">compliant</span>':'<span class="pill2 warn">non-compliant</span>'}</div>
+    <div class="sec"><h4>Hardening baseline (macos/harden.sh)</h4>${controls}</div>
+    <div class="sec"><h4>Owner</h4><a data-open-identity="${esc(d.user_email)}" style="cursor:pointer">${esc(d.user_email)} →</a></div>
+    <div class="muted" style="font-size:12px;margin-top:14px">Last sync: ${new Date(d.last_inventory_update).toLocaleString()}</div></div>`;
+}
+function findingDrawer(idx){const f=(state.trace.findings||[])[idx];if(!f)return;
+  return `<div class="dh"><div><div class="det" style="font-weight:700;font-size:15px">${esc(f.detector)}</div><span class="sev ${f.severity}">${f.severity}</span></div><button class="close" data-close>Close ✕</button></div>
+    <div class="db"><div style="font-size:15px;line-height:1.5">${esc(f.summary)}</div>
+    <div class="sec"><h4>Auto-remediation</h4><div class="banner bad" style="font-weight:500">${esc(f.remediation)}</div></div>
+    <div class="sec"><h4>Involved identity</h4><a data-open-identity="${esc(f.user)}" style="cursor:pointer">${esc(f.user)} →</a></div></div>`;
+}
+
+/* ---------- actions/logic ---------- */
+async function doAction(fn){if(state.busy)return;state.busy=true;try{await fn();}catch(e){toast('Error: '+e.message);}state.busy=false;}
+async function setTrace(res){state.trace=res.trace||res;renderView();}
+async function runReview(){state.tab='review';state.reviewLoading=true;renderView();
+  try{const r=await postJSON('/api/review');state.reviewEnabled=r.enabled;state.review=r.enabled?r.review:null;if(!r.enabled)toast(r.message||'review disabled');}
+  catch(e){toast('Review failed: '+e.message);}state.reviewLoading=false;renderView();}
+async function loadScenario(id){await doAction(async()=>{const t=await postJSON('/api/scenario',{id});
+  state.trace=t;state.review=null;state.askAnswer=null;state.ask='';state.search='';document.getElementById('search').value='';
+  state.findingFilter='all';state.kindFilter='all';state.tab='overview';toast('Loaded: '+(t.scenario?t.scenario.title:id));renderView();});}
+async function askAI(q){if(!q)return;state.ask=q;state.askLoading=true;state.askAnswer=null;renderView();
+  try{const r=await postJSON('/api/ask',{question:q});state.askAnswer=r.enabled?r.answer:(r.message||'AI disabled');}
+  catch(e){state.askAnswer='Error: '+e.message;}state.askLoading=false;renderView();
+  const el=document.getElementById('askInput');if(el){el.value=state.ask;el.focus();}}
+
+/* ---------- events ---------- */
+document.addEventListener('click',async(e)=>{
+  const T=e.target.closest('[data-tab],[data-open-identity],[data-open-device],[data-open-finding],[data-load-scenario],[data-finding-filter],[data-kind],[data-act],[data-close]');
+  if(!T)return;
+  if(T.hasAttribute('data-close')){closeDrawer();return;}
+  if(T.dataset.tab){state.tab=T.dataset.tab;renderView();window.scrollTo({top:0,behavior:'smooth'});return;}
+  if(T.dataset.openIdentity!==undefined){openDrawer(identityDrawer(T.dataset.openIdentity));return;}
+  if(T.dataset.openDevice!==undefined){openDrawer(deviceDrawer(T.dataset.openDevice));return;}
+  if(T.dataset.openFinding!==undefined){openDrawer(findingDrawer(+T.dataset.openFinding));return;}
+  if(T.dataset.loadScenario!==undefined){loadScenario(T.dataset.loadScenario);return;}
+  if(T.dataset.findingFilter!==undefined){state.findingFilter=T.dataset.findingFilter;renderView();return;}
+  if(T.dataset.kind!==undefined){state.kindFilter=T.dataset.kind;renderView();return;}
+  if(T.dataset.act==='reset'){await doAction(async()=>{const t=await postJSON('/api/reset');state.trace=t;state.review=null;state.askAnswer=null;toast('Reset to '+(t.scenario?t.scenario.title:'baseline'));renderView();});return;}
+  if(T.dataset.act==='review'){runReview();return;}
+  if(T.dataset.act==='ask'){const el=document.getElementById('askInput');askAI(el?el.value.trim():'');return;}
+});
+document.getElementById('backdrop').addEventListener('click',closeDrawer);
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='askInput'){e.preventDefault();askAI(e.target.value.trim());}});
+const decBanner=dec=>`<div class="banner ${dec.auto_approve?'good':'bad'}">${dec.auto_approve?'✓ AUTO-APPROVED':'⏳ ROUTED TO HUMAN'} — ${esc(dec.reason)}</div>`;
+document.addEventListener('submit',async(e)=>{const f=e.target.closest('form[data-form]');if(!f)return;e.preventDefault();
+  const d=Object.fromEntries(new FormData(f).entries()),kind=f.dataset.form,by=buildIdentities(state.trace);
+  await doAction(async()=>{
+    if(kind==='onboard'){await setTrace(await postJSON('/api/human-event',{type:'joiner',id:'API-'+Date.now(),email:d.email,name:d.name,department:d.department,title:d.title}));toast('Onboarded '+d.name);}
+    else if(kind==='move'){const i=by[d.email];await setTrace(await postJSON('/api/human-event',{type:'mover',id:'API',email:d.email,name:i?i.name:d.email,department:d.department,title:i?i.title:'',prior_department:i?i.department:''}));toast('Transferred '+d.email+' → '+d.department);}
+    else if(kind==='offboard'){const i=by[d.email];await setTrace(await postJSON('/api/human-event',{type:'leaver',id:'API',email:d.email,name:i?i.name:d.email,department:i?i.department:'',title:i?i.title:''}));toast('Offboarded '+d.email);}
+    else if(kind==='jit'){const r=await postJSON('/api/jit',{user:d.user,requested:d.requested});state.trace=r.trace;document.getElementById('res-jit').innerHTML=decBanner(r.decision);}
+    else if(kind==='breakglass'){const r=await postJSON('/api/jit',{user:d.user,requested:'break-glass-eligible'});state.trace=r.trace;document.getElementById('res-breakglass').innerHTML=decBanner(r.decision);}
+    else if(kind==='lock'){const r=await postJSON('/api/lock',{target:d.target,reason:d.reason});await setTrace(r);toast('Locked '+d.target);}
+    else if(kind==='terminate'){const r=await postJSON('/api/terminate-session',{user:d.user});await setTrace(r);toast('Terminated sessions for '+d.user+' ('+(r.actions||[]).filter(a=>a.kind==='terminate_session').length+')');}
+    else if(kind==='incident'){const r=await postJSON('/api/incident',{target:d.target});await setTrace(r);toast('Containment ran: '+(r.actions||[]).map(a=>a.kind.replace(/_/g,' ')).join(' + '));}
+    else if(kind==='device'){const map={ok:[true,true],noncompliant:[true,false],unmanaged:[false,false]};const [m,c]=map[d.posture]||[true,true];await setTrace(await postJSON('/api/device',{email:d.email,serial:d.serial||'',managed:m,compliant:c}));toast('Device posture set for '+d.email);}
+    else if(kind==='agent'){await setTrace(await postJSON('/api/agent-event',{type:'joiner',name:d.name,scope:[d.scope]}));toast('Deployed agent '+d.name);state.tab='identities';renderView();}
+    else if(kind==='agent-rescope'){await setTrace(await postJSON('/api/agent-event',{type:'mover',name:d.name,scope:[d.scope]}));toast('Re-scoped agent '+d.name);}
+    else if(kind==='agent-revoke'){await setTrace(await postJSON('/api/agent-event',{type:'leaver',name:d.name}));toast('Revoked agent '+d.name);}
+  });
+});
+
+/* ---------- init ---------- */
+(async()=>{mountChrome();
+  try{const [sc,tr]=await Promise.all([getJSON('/api/scenarios'),getJSON('/api/trace')]);state.scenarios=sc;state.trace=tr;state.live=true;}
+  catch(e){state.live=false;}
+  renderView();
+})();
+</script>
+</body>
+</html>

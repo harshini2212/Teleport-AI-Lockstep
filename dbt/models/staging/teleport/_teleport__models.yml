@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: stg_teleport_events
+    description: >
+      Typed, flattened Teleport audit events — one row per event, unpacked from the
+      raw SUPER blob. The single source of truth for every access-review mart.
+    columns:
+      - name: event_uid
+        description: Teleport's globally-unique event `uid`. Grain of this model.
+        tests:
+          - unique
+          - not_null
+      - name: event_time
+        description: Event timestamp (UTC), parsed from the RFC3339 `time` field.
+        tests:
+          - not_null
+      - name: event_type
+        description: >
+          Dotted Teleport event type (the tagged-union discriminator). Constrained
+          to the set Lifecycle Guard reasons about; an unexpected type here means a
+          new Teleport event we haven't mapped — worth a look, hence the test.
+        tests:
+          - not_null
+          - accepted_values:
+              # The real dotted event types from Teleport's Audit Events schema.
+              # If Teleport adds one we care about, add it here (and likely to a mart).
+              values:
+                - "user.login"            # T1000I/T1001W local or SSO login
+                - "user.create"           # provisioning a Teleport user
+                - "user.update"           # role/trait change on a user
+                - "user.delete"           # deprovisioning a user
+                - "session.start"         # interactive session began
+                - "session.end"           # interactive session ended
+                - "access_request.create" # a JIT role request was filed
+                - "access_request.review" # a reviewer approved/denied a request
+                - "lock.create"           # an identity was locked (the Leaver path)
+                - "cert.create"           # a short-lived certificate was issued
+              # Don't hard-fail CI on an unseen-but-harmless type; warn so it's noticed.
+              config:
+                severity: warn
+      - name: teleport_user
+        description: Teleport username (goteleport.com email in the demo).
+      - name: source_ip
+        description: Remote source IP, parsed from `addr.remote` (port stripped).
+      - name: success
+        description: Auth outcome where the event carries one; NULL on neutral events.
