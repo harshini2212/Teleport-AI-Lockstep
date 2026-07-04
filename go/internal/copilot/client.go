@@ -45,7 +45,12 @@ type Client struct {
 // NewClient reads ANTHROPIC_API_KEY (required) and an optional model override
 // from LIFECYCLEGUARD_MODEL. Returns ErrNoAPIKey when no key is present.
 func NewClient() (*Client, error) {
-	key := os.Getenv("ANTHROPIC_API_KEY")
+	// Trim surrounding whitespace/newlines. A key pasted into a PaaS dashboard
+	// (Railway, etc.) or exported in a shell often carries a trailing \n or \r,
+	// and Go's HTTP client rejects header values containing control characters
+	// with `invalid header field value for "X-Api-Key"`. Sanitize at the source
+	// so every request (complete + Chat) gets a clean value.
+	key := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
 	if key == "" {
 		return nil, ErrNoAPIKey
 	}

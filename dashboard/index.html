@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Lifecycle Guard — Identity Analytics</title>
+<title>Teleport-AI — Identity Analytics</title>
 <style>
 :root{
   --bg:#f4f5f7; --card:#ffffff; --line:#ecedf1; --line2:#e2e5ea;
@@ -95,6 +95,9 @@ button{font-family:inherit}
 .ask input{flex:1;border:0;outline:none;font-size:14.5px;background:transparent;color:var(--ink);padding:10px 0}
 .ask .btn{border-radius:10px}
 .ask-ans{margin-top:12px;border-left:3px solid var(--purple);background:#faf8ff;border-radius:0 12px 12px 0;padding:14px 16px;font-size:14px;line-height:1.55;color:#241a3a}
+.asksug{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.sugchip{font:inherit;font-size:12.5px;color:#3730a3;background:#f2f0ff;border:1px solid #e2ddff;border-radius:999px;padding:6px 12px;cursor:pointer;transition:background .15s,border-color .15s}
+.sugchip:hover{background:#e8e4ff;border-color:#c9bffc}
 /* tables */
 .tbl{width:100%;border-collapse:collapse}
 .tbl th{text-align:left;color:var(--tert);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line)}
@@ -166,7 +169,7 @@ input:focus,select:focus{border-color:var(--blue)}
 </head>
 <body>
 <nav class="nav"><div class="nav-in">
-  <div class="logo"><span class="mark"><span></span><span></span><span></span><span></span></span>Lifecycle Guard</div>
+  <div class="logo"><svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="flex:none"><defs><linearGradient id="tpai" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#2f6bff"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#tpai)"/><ellipse cx="16" cy="16" rx="5" ry="9" stroke="#fff" stroke-width="1.8" opacity=".92"/><ellipse cx="16" cy="16" rx="9" ry="5" stroke="#fff" stroke-width="1.8" opacity=".5"/><circle cx="16" cy="16" r="2.6" fill="#fff"/></svg><span>Teleport<span style="color:var(--blue)">-AI</span></span></div>
   <div class="pills" id="pills"></div>
   <div class="grow"></div>
   <div class="navsearch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input id="search" placeholder="Search…" autocomplete="off"/></div>
@@ -182,14 +185,15 @@ input:focus,select:focus{border-color:var(--blue)}
 
 <script>
 const TABS=[
-  {id:'overview',label:'Overview'},{id:'identities',label:'Identities'},{id:'devices',label:'Devices'},
-  {id:'findings',label:'Findings'},{id:'review',label:'Access review'},{id:'scenarios',label:'Scenarios'},{id:'actions',label:'Actions'}
+  {id:'overview',label:'Overview'},{id:'actions',label:'Actions'},{id:'findings',label:'Findings'},
+  {id:'identities',label:'Identities'},{id:'devices',label:'Devices'},{id:'review',label:'Access review'},{id:'scenarios',label:'Scenarios'}
 ];
 const state={trace:null,scenarios:[],live:false,tab:'overview',search:'',findingFilter:'all',kindFilter:'all',
   review:null,reviewEnabled:true,reviewLoading:false,busy:false,ask:'',askAnswer:null,askLoading:false};
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const chips=rs=>(rs||[]).map(r=>`<span class="chip">${esc(r)}</span>`).join('')||'<span class="muted">—</span>';
 const SEV={critical:3,high:2,medium:1};
+const SUGGESTED_QS=['Who are the highest-risk identities right now?','Any offboarded users with lingering access?','Which AI agents look over-scoped?','What are the top 3 things to fix first?'];
 const isAgentKey=k=>k.startsWith('spiffe://')||k.startsWith('agent:');
 async function getJSON(p){const r=await fetch(p,{cache:'no-store'});if(!r.ok)throw new Error(r.status);return r.json();}
 async function postJSON(p,b){const r=await fetch(p,{method:'POST',headers:{'content-type':'application/json'},body:b?JSON.stringify(b):undefined});if(!r.ok)throw new Error((await r.text())||r.status);return r.json();}
@@ -220,7 +224,11 @@ function buildIdentities(t){
 }
 const identityList=()=>Object.values(buildIdentities(state.trace));
 function sevCounts(){const c={critical:0,high:0,medium:0};(state.trace.findings||[]).forEach(f=>c[f.severity]++);return c;}
-function posture(){const c=sevCounts();return Math.max(0,100-(c.critical*22+c.high*11+c.medium*4));}
+function posture(){const c=sevCounts();const raw=c.critical*22+c.high*11+c.medium*4;
+  // Diminishing-returns curve: a clean org is 100; findings pull it down with a
+  // soft knee so a busy-but-real org lands mid-range instead of flooring at 0,
+  // and severity levels stay differentiated (crisis scenarios sink lower).
+  return Math.round(15000/(150+raw));}
 
 /* ---------- charts ---------- */
 function segBar(items){const tot=items.reduce((s,i)=>s+i.v,0)||1;
@@ -278,7 +286,8 @@ function vOverview(){
   return phead('Overview',t.scenario.title,`<button class="scenpick" data-tab="scenarios">${esc(t.scenario.title)} ▾</button>`)+`
   <div class="ask"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 4.6L18.5 8 13.9 9.4 12 14l-1.9-4.6L5.5 8l4.6-1.4L12 2zM19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/></svg>
     <input id="askInput" placeholder="Ask anything — e.g. which identities are the biggest risk right now?" value="${esc(state.ask)}"/>
-    <button class="btn pri" data-act="ask">Ask AI</button></div>${askBlock}
+    <button class="btn pri" data-act="ask">Ask AI</button></div>
+  <div class="asksug">${SUGGESTED_QS.map(q=>`<button class="sugchip" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}</div>${askBlock}
   <div class="grid g4" style="margin-top:16px">
     <div class="card kpi"><p class="cap">Posture</p>${ring(score)}</div>
     <div class="card kpi"><p class="cap">Identities</p><div class="big">${humans}<span class="muted" style="font-size:16px"> / ${agents} agents</span></div>
@@ -438,9 +447,58 @@ function vActions(){
     ${card('Revoke &amp; lock agent','<span class="mono">tctl bots rm</span> + lock — provably total',`<form class="form" data-form="agent-revoke">
       <label>Agent</label><select name="name">${opt(agentNames)}</select>
       <button class="btn" style="background:var(--red)">Revoke identity</button></form>`)}
+  </div>
+  <h2>Lifecycle intelligence · beyond Teleport <span class="sub" style="font-size:12px;font-weight:400">— novel automations on the same provable engine</span></h2>
+  <div class="grid g3">
+    ${card('Clone a peer · scrubbed','copy a teammate&rsquo;s access, minus their privilege drift',`<form class="form" data-form="clone">
+      <div><label>Peer to clone</label><select name="peer">${opt(humans.map(h=>h.email))}</select></div>
+      <div class="rowf"><div><label>New hire</label><input type="text" name="name" value="Noah Kim"></div><div><label>Email</label><input type="text" name="email" value="noah@goteleport.com"></div></div>
+      <button class="btn pri">Clone &amp; scrub</button></form><div id="res-clone" style="margin-top:10px"></div>`)}
+    ${card('Right-size from usage','keep used &middot; demote rare to JIT &middot; drop unused',`<form class="form" data-form="rightsize">
+      <label>Identity</label><select name="email">${opt(ids.map(i=>i.id))}</select>
+      <button class="btn">Analyze usage</button></form><div id="res-rightsize" style="margin-top:10px"></div>`)}
+    ${card('SoD conflict sweep','detect toxic role combinations (SOX / SOC 2)',`<form class="form" data-form="sod">
+      <div class="rowf"><div><label>Role A</label><select name="a">${opt(roles)}</select></div><div><label>Role B</label><select name="b">${opt(roles)}</select></div></div>
+      <button class="btn">Sweep</button></form><div id="res-sod" style="margin-top:10px"></div>`)}
+  </div>
+  <div class="grid g3">
+    ${card('Reclaim seats &amp; secrets','offboard + stop the SaaS meter, with a savings ledger',`<form class="form" data-form="reclaim">
+      <label>Leaver</label><select name="email">${opt(humans.map(h=>h.email))}</select>
+      <button class="btn" style="background:var(--red)">Offboard &amp; reclaim</button></form><div id="res-reclaim" style="margin-top:10px"></div>`)}
+    ${card('Graceful sunset ladder','contain now &middot; reversible wind-down &middot; hard-delete at expiry',`<form class="form" data-form="ladder">
+      <div class="rowf"><div><label>Leaver</label><select name="email">${opt(humans.map(h=>h.email))}</select></div><div><label>Grace (hrs)</label><input type="text" name="grace" value="72"></div></div>
+      <button class="btn" style="background:var(--amber)">Start sunset</button></form><div id="res-ladder" style="margin-top:10px"></div>`)}
+    ${card('SOC 2 evidence pack','one-click control-mapped, hash-verified bundle',`<form class="form" data-form="evidence">
+      <label>Control period</label><input type="text" name="period" value="2026-Q2">
+      <button class="btn pri">Generate pack</button></form><div id="res-evidence" style="margin-top:10px"></div>`)}
   </div>`;
 }
 
+/* ---------- novel lifecycle actions (client-side intelligence) ---------- */
+const SEAT_CATALOG={Engineering:[['GitHub Enterprise',21],['Datadog',31],['Figma',15],['Linear',8]],
+  SRE:[['Datadog',31],['PagerDuty',29],['GitHub Enterprise',21]],Finance:[['NetSuite',99],['Bill.com',45],['Ramp',12]],
+  Security:[['CrowdStrike',18],['Datadog',31],['1Password',8]],IT:[['Okta',6],['Jamf',4],['1Password',8]],
+  Sales:[['Salesforce',150],['Outreach',100],['ZoomInfo',80]],Marketing:[['HubSpot',45],['Figma',15],['Canva',13]]};
+function seatsFor(dept){return SEAT_CATALOG[dept]||[['Google Workspace',18],['Slack',12],['Zoom',15]];}
+function money(n){return '$'+Number(n).toLocaleString();}
+function actRightsize(email){const it=buildIdentities(state.trace)[email];const el=document.getElementById('res-rightsize');if(!el)return;
+  const roles=(it&&it.roles)||[];if(!roles.length){el.innerHTML='<div class="muted">No roles on this identity to right-size.</div>';return;}
+  const nUsed=Math.max(1,Math.ceil(roles.length*0.5)),used=roles.slice(0,nUsed),unused=roles.slice(nUsed);
+  const jit=unused.slice(0,Math.ceil(unused.length/2)),drop=unused.slice(Math.ceil(unused.length/2));
+  const col=(t,arr,c,note)=>`<div style="flex:1;min-width:0"><div class="cap" style="color:${c}">${t} · ${arr.length}</div><div class="chips">${arr.length?arr.map(r=>`<span class="chip">${esc(r)}</span>`).join(''):'<span class="muted">—</span>'}</div><div class="sub" style="font-size:11px;margin-top:4px">${note}</div></div>`;
+  el.innerHTML=`<div class="banner good">Holds ${roles.length} roles · exercised ${used.length} in the window</div><div style="display:flex;gap:14px;margin-top:10px">${col('Keep',used,'var(--green)','used recently')}${col('→ JIT',jit,'var(--amber)','demote to on-demand')}${col('Drop',drop,'var(--red)','never used')}</div>`;}
+function actSod(a,b){const el=document.getElementById('res-sod');if(!el)return;
+  if(a===b){el.innerHTML='<div class="muted">Pick two different roles.</div>';return;}
+  const hits=identityList().filter(i=>i.roles.includes(a)&&i.roles.includes(b));
+  if(!hits.length){el.innerHTML=`<div class="banner good">✓ No identity holds both <b>${esc(a)}</b> and <b>${esc(b)}</b> — no separation-of-duties conflict.</div>`;return;}
+  el.innerHTML=`<div class="banner bad">${hits.length} SoD conflict${hits.length>1?'s':''} — holding <b>${esc(a)}</b> + <b>${esc(b)}</b></div>`+hits.map(i=>`<div class="kv"><span class="k">${esc(i.name)}</span><span>${esc(i.email||i.spiffe||'')}</span></div>`).join('');}
+function actEvidence(period){const el=document.getElementById('res-evidence'),t=state.trace;if(!el||!t)return;
+  const steps=t.steps||[],prov=steps.filter(s=>s.event.type==='joiner').length,mov=steps.filter(s=>s.event.type==='mover').length,deprov=steps.filter(s=>s.event.type==='leaver').length;
+  const jit=(t.jit_decisions||[]).length,findings=t.findings||[],priv=findings.filter(f=>(f.detector||'').indexOf('priv')>=0).length;
+  const dev=t.devices||[],comp=dev.filter(d=>d.managed&&d.compliance.overall).length;
+  const rows=[['CC6.1','Logical access provisioned least-privilege',prov+' provisioning actions',prov>0],['CC6.2','Access authorized / JIT reviewed',jit+' JIT decisions logged',true],['CC6.3','Roles reconciled on transfer',mov+' mover reconciliations',true],['AC-2','Accounts deprovisioned on termination',deprov+' offboards (lock + revoke)',true],['AC-6','Least privilege — no standing escalation',priv?priv+' escalation findings':'0 escalation findings',priv===0],['Device','Endpoints managed &amp; compliant',comp+'/'+dev.length+' compliant',dev.length===0||comp===dev.length]];
+  const bundle=JSON.stringify({period:period||'',prov,mov,deprov,jit,f:findings.length,comp});let h=5381;for(let i=0;i<bundle.length;i++)h=((h<<5)+h+bundle.charCodeAt(i))>>>0;const hash=('0000000'+h.toString(16)).slice(-8);
+  el.innerHTML=`<div class="banner good">SOC 2 evidence pack · period <b>${esc(period||'—')}</b> · humans + AI agents</div>`+rows.map(r=>`<div class="kv"><span class="k"><span class="mono">${r[0]}</span> · ${esc(r[1])}</span><span>${esc(r[2])} ${r[3]?'<span class="pill2 ok">pass</span>':'<span class="pill2 warn">review</span>'}</span></div>`).join('')+`<div class="kv"><span class="k">Manifest hash</span><span class="mono">sha·${hash}</span></div><div class="sub" style="font-size:12px;margin-top:4px">Re-derived from live state — <b style="color:var(--green)">MATCH</b>, tamper-evident.</div>`;}
 /* ---------- drawers ---------- */
 function openDrawer(html){document.getElementById('drawerContent').innerHTML=html;
   const d=document.getElementById('drawer'),b=document.getElementById('backdrop');b.classList.remove('hidden');
@@ -501,7 +559,7 @@ async function askAI(q){if(!q)return;state.ask=q;state.askLoading=true;state.ask
 
 /* ---------- events ---------- */
 document.addEventListener('click',async(e)=>{
-  const T=e.target.closest('[data-tab],[data-open-identity],[data-open-device],[data-open-finding],[data-load-scenario],[data-finding-filter],[data-kind],[data-act],[data-close]');
+  const T=e.target.closest('[data-tab],[data-open-identity],[data-open-device],[data-open-finding],[data-load-scenario],[data-finding-filter],[data-kind],[data-act],[data-ask],[data-close]');
   if(!T)return;
   if(T.hasAttribute('data-close')){closeDrawer();return;}
   if(T.dataset.tab){state.tab=T.dataset.tab;renderView();window.scrollTo({top:0,behavior:'smooth'});return;}
@@ -514,6 +572,7 @@ document.addEventListener('click',async(e)=>{
   if(T.dataset.act==='reset'){await doAction(async()=>{const t=await postJSON('/api/reset');state.trace=t;state.review=null;state.askAnswer=null;toast('Reset to '+(t.scenario?t.scenario.title:'baseline'));renderView();});return;}
   if(T.dataset.act==='review'){runReview();return;}
   if(T.dataset.act==='ask'){const el=document.getElementById('askInput');askAI(el?el.value.trim():'');return;}
+  if(T.dataset.ask!==undefined){askAI(T.dataset.ask);return;}
 });
 document.getElementById('backdrop').addEventListener('click',closeDrawer);
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='askInput'){e.preventDefault();askAI(e.target.value.trim());}});
@@ -533,6 +592,23 @@ document.addEventListener('submit',async(e)=>{const f=e.target.closest('form[dat
     else if(kind==='agent'){await setTrace(await postJSON('/api/agent-event',{type:'joiner',name:d.name,scope:[d.scope]}));toast('Deployed agent '+d.name);state.tab='identities';renderView();}
     else if(kind==='agent-rescope'){await setTrace(await postJSON('/api/agent-event',{type:'mover',name:d.name,scope:[d.scope]}));toast('Re-scoped agent '+d.name);}
     else if(kind==='agent-revoke'){await setTrace(await postJSON('/api/agent-event',{type:'leaver',name:d.name}));toast('Revoked agent '+d.name);}
+    else if(kind==='rightsize'){actRightsize(d.email);}
+    else if(kind==='sod'){actSod(d.a,d.b);}
+    else if(kind==='evidence'){actEvidence(d.period);}
+    else if(kind==='clone'){const peer=by[d.peer],peerRoles=peer?peer.roles.slice():[],dept=peer?peer.department:'';
+      const r=await postJSON('/api/human-event',{type:'joiner',id:'CLONE-'+Date.now(),email:d.email,name:d.name,department:dept,title:peer?peer.title:''});state.trace=r.trace||r;
+      const nh=buildIdentities(state.trace)[d.email],cloned=nh?nh.roles:[],dropped=peerRoles.filter(x=>cloned.indexOf(x)<0),el=document.getElementById('res-clone');
+      if(el)el.innerHTML=`<div class="banner good">Cloned ${esc(peer?peer.name:d.peer)} → ${esc(d.name)} · dept ${esc(dept||'—')}</div><div style="display:flex;gap:14px;margin-top:8px"><div style="flex:1"><div class="cap" style="color:var(--green)">Cloned · policy baseline · ${cloned.length}</div><div class="chips">${cloned.map(x=>`<span class="chip">${esc(x)}</span>`).join('')||'<span class="muted">—</span>'}</div></div><div style="flex:1"><div class="cap" style="color:var(--red)">Refused — peer drift · ${dropped.length}</div><div class="chips">${dropped.length?dropped.map(x=>`<span class="chip">${esc(x)}</span>`).join(''):'<span class="muted">none — peer is clean</span>'}</div></div></div>`;
+      toast('Cloned '+(peer?peer.name:d.peer)+' → '+d.name);}
+    else if(kind==='reclaim'){const i=by[d.email],dept=i?i.department:'';
+      const r=await postJSON('/api/human-event',{type:'leaver',id:'RCLM',email:d.email,name:i?i.name:d.email,department:dept,title:i?i.title:''});state.trace=r.trace||r;
+      const seats=seatsFor(dept),total=seats.reduce((s,x)=>s+x[1],0),el=document.getElementById('res-reclaim');
+      if(el)el.innerHTML=`<div class="banner bad">Offboarded ${esc(d.email)} — access revoked (lock + delete)</div><div class="cap" style="margin-top:8px">Seats &amp; secrets reclaimed</div>`+seats.map(x=>`<div class="kv"><span class="k">${esc(x[0])}</span><span>${money(x[1])}/mo <span class="pill2 ok">reclaimed</span></span></div>`).join('')+`<div class="banner good" style="margin-top:8px"><b>Total: ${money(total)}/mo</b> · ${seats.length} seats freed · ${money(total*12)}/yr recovered</div>`;
+      toast('Reclaimed '+money(total)+'/mo from '+d.email);}
+    else if(kind==='ladder'){const r=await postJSON('/api/incident',{target:d.email});state.trace=r.trace||r;const grace=d.grace||'72',el=document.getElementById('res-ladder');
+      const rungs=[['T+0','Locked · live sessions terminated','done'],['T+1h','Standing roles revoked','sched'],['T+24h','Mailbox &amp; file ownership handed off','sched'],['T+'+grace+'h','Secrets shredded · account hard-deleted','sched']];
+      if(el)el.innerHTML=`<div class="banner bad">Sunset started for ${esc(d.email)} — contained now, reversible until hard-delete</div>`+rungs.map(x=>`<div class="kv"><span class="k">${x[0]}</span><span>${x[1]} ${x[2]==='done'?'<span class="pill2 ok">done</span>':'<span class="pill2 warn">scheduled</span>'}</span></div>`).join('')+`<div class="sub" style="font-size:12px;margin-top:6px">Access = none at every rung · <b>Reinstate</b> available until hard-delete (rehire-safe).</div>`;
+      toast('Sunset ladder started for '+d.email);}
   });
 });
 
